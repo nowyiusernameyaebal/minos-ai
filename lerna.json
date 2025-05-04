@@ -1,0 +1,143 @@
+{
+    "$schema": "node_modules/lerna/schemas/lerna-schema.json",
+    "version": "0.1.0",
+    "npmClient": "npm",
+    "useWorkspaces": true,
+    "packages": [
+      "packages/*",
+      "sdk"
+    ],
+    "command": {
+      "version": {
+        "conventionalCommits": true,
+        "changelogPreset": "conventional-changelog-angular",
+        "message": "chore(release): publish %s [skip ci]",
+        "allowBranch": ["main", "develop", "release/*", "hotfix/*"],
+        "exact": true,
+        "push": true,
+        "gitRemote": "origin",
+        "createRelease": "github",
+        "tagVersionPrefix": "v",
+        "signGitCommit": true,
+        "signGitTag": true,
+        "preid": "alpha",
+        "ignoreChanges": [
+          "**/*.md",
+          "**/*.test.ts",
+          "**/*.spec.ts",
+          "**/__tests__/**",
+          "**/test/**",
+          "**/*.stories.*",
+          "**/__snapshots__/**"
+        ]
+      },
+      "publish": {
+        "conventionalCommits": true,
+        "registry": "https://registry.npmjs.org/",
+        "access": "public",
+        "verifyAccess": true,
+        "graphType": "all",
+        "contents": "dist",
+        "distTag": "latest",
+        "yes": true,
+        "ignoreChanges": [
+          "**/*.md",
+          "**/*.test.ts",
+          "**/*.spec.ts",
+          "**/__tests__/**",
+          "**/test/**",
+          "**/*.stories.*",
+          "**/__snapshots__/**"
+        ]
+      },
+      "bootstrap": {
+        "npmClientArgs": ["--no-package-lock", "--no-audit", "--no-fund", "--prefer-offline"],
+        "hoist": true,
+        "noCi": true,
+        "nohoist": [
+          "**/@solana/**",
+          "**/@project-serum/**",
+          "**/bn.js",
+          "**/buffer-layout"
+        ],
+        "ignorePrepublish": true,
+        "strict": true
+      },
+      "clean": {
+        "yes": true,
+        "loglevel": "verbose"
+      },
+      "run": {
+        "stream": true,
+        "parallel": true,
+        "npmClient": "npm",
+        "sort": true,
+        "concurrency": 8
+      },
+      "add": {
+        "exact": true
+      },
+      "exec": {
+        "concurrency": 6,
+        "bail": true
+      }
+    },
+    "ignoreChanges": [
+      "**/CHANGELOG.md",
+      "**/node_modules/**",
+      "**/package-lock.json",
+      "**/*.md",
+      "**/__tests__/**",
+      "**/*.stories.*",
+      "**/__snapshots__/**",
+      "**/*.test.{ts,tsx,js,jsx}",
+      "**/*.spec.{ts,tsx,js,jsx}",
+      "**/tests/**",
+      "**/.gitignore",
+      "**/tsconfig.json",
+      "**/.eslintrc.*",
+      "**/.eslintignore",
+      "**/.prettierrc",
+      "**/jest.config.*",
+      "**/docs/**"
+    ],
+    "changelog": {
+      "repo": "minos-ai/minos-ai",
+      "cacheDir": ".changelog",
+      "nextVersion": "Unreleased",
+      "labels": {
+        "enhancement": "Features",
+        "bug": "Bug Fixes",
+        "documentation": "Documentation",
+        "dependency": "Dependencies",
+        "breaking": "Breaking Changes",
+        "security": "Security",
+        "performance": "Performance",
+        "test": "Tests",
+        "ci": "CI/CD",
+        "refactor": "Code Refactoring",
+        "chore": "Chores"
+      },
+      "skipCommits": "^(chore|docs|config|style|test):"
+    },
+    "stream": true,
+    "includeFilteredDependencies": true,
+    "concurrency": 8,
+    "since": "HEAD~10",
+    "loglevel": "info",
+    "maxBuffer": 500000000,
+    "ci": false,
+    "progress": true,
+    "sort": true,
+    "rejectCycles": true,
+    "bail": true,
+    "conventional-graduate": {
+      "prerelease": "alpha",
+      "bump": "patch"
+    },
+    "conventionalPrerelease": {
+      "forcePublish": true,
+      "preid": "beta",
+      "createRelease": "github"
+    }
+  }
