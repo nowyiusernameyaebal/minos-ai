@@ -1,0 +1,78 @@
+[features]
+seeds = false
+skip-lint = false
+debug = false
+
+[programs.localnet]
+vault = "Vauu5LGc3GUVxcMgp12wonnV4HaJXWgy5vwAHZmJftx"
+
+[programs.devnet]
+vault = "Vauu5LGc3GUVxcMgp12wonnV4HaJXWgy5vwAHZmJftx"
+
+[programs.mainnet]
+vault = "Vauu5LGc3GUVxcMgp12wonnV4HaJXWgy5vwAHZmJftx"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "devnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+test:local = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts -- --cluster localhost"
+test:devnet = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts -- --cluster devnet"
+
+# Validator configuration for local development
+[test]
+startup_wait = 5000
+shutdown_wait = 2000
+requires_unlock = false
+upgradeable = true
+
+[test.validator]
+url = "https://api.devnet.solana.com"
+warp_slot = "10000"
+
+# Add program dependencies
+[[test.validator.clone]]
+address = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA" # SPL Token Program
+
+[[test.validator.clone]]
+address = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL" # SPL Associated Token Account Program
+
+[[test.validator.clone]]
+address = "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s" # Metaplex Token Metadata Program
+
+[[test.validator.clone]]
+address = "J83w4HKfqxwcq3BEMMkPFSppX3gqekLyLJBexebFVkix" # Pyth Oracle Program
+
+# Development environment configuration
+[workspace]
+members = [
+  "programs/vault",
+]
+types = "packages/contracts/target/types"
+exclude = ["node_modules"]
+
+# Optimization settings
+[profile.release]
+overflow-checks = true
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+
+# Documentation settings
+[docs]
+generate = true
+open = false
+
+# Linter configuration
+[lint]
+clippy_args = "--deny=clippy::all --warn=clippy::style --warn=clippy::complexity"
+
+# Development environment variables
+[env]
+ANCHOR_WALLET = "~/.config/solana/id.json"
+ANCHOR_PROVIDER_URL = "https://api.devnet.solana.com"

@@ -1,0 +1,105 @@
+[package]
+name = "minos-vault"
+version = "0.1.0"
+description = "Minos-AI DeFi strategy vault for algorithmic trading on Solana"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/minos-ai/minos-platform"
+documentation = "https://docs.minos.ai"
+homepage = "https://minos.ai"
+keywords = ["solana", "anchor", "vault", "defi", "ai"]
+readme = "README.md"
+authors = ["Minos-AI Development Team <dev@minos.ai>"]
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "minos_vault"
+doctest = false
+
+[features]
+default = []
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+debug-mode = []
+local-testing = []
+devnet-testing = []
+mainnet = []
+test-bpf = []
+
+[dependencies]
+anchor-lang = { version = "0.29.0", features = ["init-if-needed"] }
+anchor-spl = { version = "0.29.0", features = ["metadata"] }
+arrayref = "0.3.7"
+solana-program = "1.17.0"
+spl-token = { version = "4.0.0", features = ["no-entrypoint"] }
+spl-associated-token-account = { version = "2.2.0", features = ["no-entrypoint"] }
+spl-token-metadata-interface = "0.2.0"
+spl-pod = "0.1.0"
+mpl-token-metadata = { version = "1.13.1", features = ["no-entrypoint"] }
+pyth-sdk-solana = "0.8.0"
+thiserror = "1.0.44"
+bytemuck = { version = "1.13.1", features = ["derive", "min_const_generics"] }
+num-derive = "0.3"
+num-traits = "0.2"
+solana-security-txt = "1.1.1"
+borsh = "0.10.3"
+
+# Optional dependencies for advanced features
+switchboard-v2 = { version = "0.4.0", optional = true }
+chainlink-solana = { version = "1.0.0", optional = true }
+metaplex-token-metadata = { version = "0.0.2", optional = true }
+
+[dev-dependencies]
+solana-program-test = "1.17.0"
+solana-sdk = "1.17.0"
+solana-logger = "1.17.0"
+serde = "1.0.175"
+serde_json = "1.0.103"
+tokio = { version = "1.29.1", features = ["full"] }
+anyhow = "1.0.71"
+proptest = "1.2.0"
+rand = "0.8.5"
+hex = "0.4.3"
+test-case = "3.1.0"
+
+[profile.release]
+overflow-checks = true     # Enable integer overflow checks
+lto = "fat"                # Link-time optimization for better performance
+codegen-units = 1          # Use one codegen unit for better optimization
+panic = "abort"            # Abort on panic for smaller binary size
+opt-level = 3              # Maximum optimization
+debug = false              # No debug symbols
+strip = true               # Strip debug symbols
+incremental = false        # Disable incremental compilation
+
+[profile.dev]
+opt-level = 0              # No optimization for faster compilation
+debug = true               # Include debug symbols
+overflow-checks = true     # Enable integer overflow checks
+
+[profile.test]
+opt-level = 0              # No optimization for faster compilation
+debug = true               # Include debug symbols
+overflow-checks = true     # Enable integer overflow checks
+
+[profile.bench]
+opt-level = 3              # Maximum optimization
+debug = false              # No debug symbols
+lto = "fat"                # Link-time optimization
+codegen-units = 1          # Better optimization
+incremental = false        # Disable incremental compilation
+
+[package.metadata.docs.rs]
+features = ["no-entrypoint"]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[package.metadata.solana-security-txt]
+name = "Minos Vault"
+project-url = "https://minos.ai"
+contacts = ["email:security@minos.ai", "discord:https://discord.gg/minos", "twitter:@MinosAI"]
+policy = "https://github.com/minos-ai/minos-platform/blob/main/SECURITY.md"
+preferred-languages = ["en"]
+source-code = "https://github.com/minos-ai/minos-platform"
+auditors = []
