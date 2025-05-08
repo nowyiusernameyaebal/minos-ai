@@ -1,0 +1,200 @@
+# ==========================================
+# Minos-AI DeFi Strategy Platform - AI Model Requirements
+# ==========================================
+
+# =============================================================================
+# Core Machine Learning and Data Science
+# =============================================================================
+numpy==1.24.3                   # Numerical computing foundation
+pandas==2.0.3                   # Data manipulation and analysis
+polars==0.19.2                  # Fast DataFrame library for large data processing
+vaex==4.16.0                    # Out-of-memory DataFrame for handling TB-scale data
+dask[complete]==2023.7.1        # Parallel computing and large dataset handling
+
+# ML Frameworks
+scikit-learn==1.3.0             # Classical ML algorithms
+xgboost==1.7.6                  # Gradient boosting optimization
+lightgbm==4.0.0                 # Light Gradient Boosting Machine
+catboost==1.2                   # Gradient boosting on decision trees
+
+# Deep Learning
+tensorflow==2.13.0              # Deep learning framework
+tensorflow-gpu==2.13.0          # GPU acceleration for TensorFlow
+keras==2.13.1                   # High-level neural networks API
+tensorflow-probability==0.20.1  # Probabilistic models
+torch==2.0.1                    # PyTorch deep learning framework
+torchvision==0.15.2             # Computer vision with PyTorch
+torchaudio==2.0.2               # Audio processing with PyTorch
+pytorch-lightning==2.0.6        # PyTorch organization framework
+transformers==4.31.0            # Hugging Face Transformers
+accelerate==0.21.0              # Hugging Face Accelerate for distributed training
+datasets==2.14.4                # Hugging Face Datasets for ML datasets
+
+# Reinforcement Learning
+gymnasium==0.29.0               # RL environment standard
+stable-baselines3==2.1.0        # RL algorithms implementation
+tianshou==0.5.0                 # Policy-based RL framework
+
+# =============================================================================
+# Data Processing and Feature Engineering
+# =============================================================================
+pyarrow==12.0.1                 # Fast data format for analytics
+fastparquet==2023.7.0           # Parquet file format support
+featuretools==1.26.0            # Automated feature engineering
+feature-engine==1.6.1           # Feature transformation and selection
+category_encoders==2.6.1        # Categorical variable encoders
+tsfresh==0.20.1                 # Time series feature extraction
+tslearn==0.6.2                  # Time series machine learning tools
+stumpy==1.11.1                  # Time series subsequence mining
+cesium==0.10.1                  # Time series feature extraction for irregular time series
+numba==0.57.1                   # JIT compiler for numerical functions
+bottleneck==1.3.7               # Fast NumPy array functions
+sympy==1.12.0                   # Symbolic mathematics
+scipy==1.11.1                   # Scientific computing
+statsmodels==0.14.0             # Statistical models and tests
+
+# =============================================================================
+# Time Series Analysis and Forecasting
+# =============================================================================
+prophet==1.1.4                  # Forecasting at scale by Facebook
+neuralprophet==0.6.2            # Neural network enhanced Prophet
+pmdarima==2.0.3                 # ARIMA models with auto-parameter selection
+sktime==0.21.0                  # Unified interface for time series ML
+kats==0.2.0                     # Time series analysis toolkit by Facebook
+gluonts==0.13.2                 # Probabilistic time series modeling
+darts==0.24.0                   # Time series forecasting made easy
+tsai==0.3.6                     # Deep learning for time series
+
+# =============================================================================
+# Solana/Crypto Specific
+# =============================================================================
+pyserum==0.5.0                  # Serum DEX client for Python
+solana==0.30.2                  # Solana blockchain integration
+ccxt==3.1.54                    # Cryptocurrency exchange trading library
+ta==0.10.2                      # Technical analysis library
+ta-lib==0.4.26                  # Professional technical analysis library
+cryptofeed==2.3.0               # Cryptocurrency exchange feed handler
+raydium-sdk-python==0.2.3       # Raydium AMM integration for Solana
+marinade-finance-sdk==0.4.1     # Marinade Finance staking integration
+pyquantum==1.3.7                # Quantum computing for financial modeling
+
+# =============================================================================
+# Feature Storage, Experiment Tracking and Model Serving
+# =============================================================================
+mlflow==2.6.0                   # ML lifecycle management
+optuna==3.2.0                   # Hyperparameter optimization
+ray[tune]==2.6.1                # Distributed hyperparameter tuning
+weights-and-biases==0.15.4      # Experiment tracking
+feast==0.32.1                   # Feature store for ML
+evidently==0.4.4                # ML monitoring and evaluation
+deepchecks==0.17.3              # Tests for continuous validation of ML models
+great-expectations==0.17.9      # Data quality validation
+bentoml==1.1.0                  # Model serving framework
+seldon-core==1.15.0             # MLOps for model deployment
+kubeflow==1.7.0                 # ML toolkit for Kubernetes
+kedro==0.18.9                   # Data and ML pipelines
+prefect==2.11.3                 # Workflow orchestration
+flytekit==1.5.0                 # Distributed computing platform
+
+# =============================================================================
+# Visualization and Reporting
+# =============================================================================
+matplotlib==3.7.2               # Plotting library
+seaborn==0.12.2                 # Statistical data visualization
+plotly==5.16.0                  # Interactive visualizations
+dash==2.12.1                    # Interactive web applications for visualization
+bokeh==3.2.1                    # Interactive visualization library
+altair==5.0.1                   # Declarative visualization
+holoviews==1.17.0               # High-level visualization system
+hvplot==0.8.4                   # High-level plotting built on HoloViews
+panel==1.2.1                    # Interactive dashboards
+streamlit==1.24.1               # Data apps for visualization
+jupyter==1.0.0                  # Interactive computing
+jupyterlab==4.0.3               # Web-based interactive development environment
+pydeck==0.8.0                   # Large-scale spatial visualization
+shap==0.42.1                    # Model explainability
+lime==0.2.0.1                   # Local interpretable model-agnostic explanations
+interpret==0.4.2                # Microsoft's model interpretability tools
+captum==0.6.0                   # Model interpretability for PyTorch
+
+# =============================================================================
+# Utilities and Development Tools
+# =============================================================================
+tqdm==4.65.0                    # Progress bar
+joblib==1.3.1                   # Parallel processing
+python-dotenv==1.0.0            # Environment variable management
+confuse==2.0.1                  # Configuration management
+hydra-core==1.3.2               # Hierarchical configuration
+omegaconf==2.3.0                # YAML configuration system
+pydantic==2.1.1                 # Data validation and settings management
+jsonschema==4.18.4              # JSON schema validation
+typer==0.9.0                    # Command-line interface creation
+rich==13.5.0                    # Rich text and formatting in the terminal
+click==8.1.6                    # Command line interface creation
+loguru==0.7.0                   # Logging made simple and effective
+pynvml==11.5.0                  # NVIDIA Management Library wrapper
+psutil==5.9.5                   # System monitoring
+boto3==1.28.2                   # AWS SDK for Python
+docker==6.1.3                   # Docker API
+kubernetes==27.2.0              # Kubernetes API client
+pytest==7.4.0                   # Testing framework
+pytest-cov==4.1.0               # Test coverage
+pytest-benchmark==4.0.0         # Benchmark tests
+hypothesis==6.82.6              # Property-based testing
+black==23.7.0                   # Code formatter
+isort==5.12.0                   # Import sorter
+mypy==1.4.1                     # Static type checking
+pylint==2.17.5                  # Static code analysis
+flake8==6.1.0                   # Style guide enforcement
+bandit==1.7.5                   # Security issue scanner
+safety==2.3.5                   # Dependency safety check
+pre-commit==3.3.3               # Git hooks framework
+
+# =============================================================================
+# API and Services
+# =============================================================================
+fastapi==0.100.1                # Fast API framework
+uvicorn==0.23.2                 # ASGI server
+gunicorn==21.2.0                # WSGI HTTP server
+python-multipart==0.0.6         # Multipart form data parsing
+websockets==11.0.3              # WebSocket implementation
+httpx==0.24.1                   # HTTP client
+aiohttp==3.8.5                  # Async HTTP client/server
+grpcio==1.56.2                  # gRPC - high performance RPC framework
+protobuf==4.23.4                # Protocol buffers
+pika==1.3.2                     # RabbitMQ client
+confluent-kafka==2.2.0          # Apache Kafka client
+redis==4.6.0                    # Redis client
+motor==3.2.0                    # Async MongoDB driver
+asyncpg==0.28.0                 # Async PostgreSQL driver
+aiomysql==0.2.0                 # Async MySQL driver
+sqlalchemy==2.0.19              # SQL toolkit and ORM
+alembic==1.11.1                 # Database migration tool
+celery==5.3.1                   # Distributed task queue
+
+# =============================================================================
+# Production Monitoring and Observability
+# =============================================================================
+prometheus-client==0.17.1       # Prometheus monitoring integration
+grafana-api==1.0.3              # Grafana API client
+opentelemetry-api==1.19.0       # OpenTelemetry API
+opentelemetry-sdk==1.19.0       # OpenTelemetry SDK
+opentelemetry-exporter-otlp==1.19.0  # OpenTelemetry protocol exporter
+sentry-sdk==1.29.0              # Error tracking
+elastic-apm==6.18.0             # Application performance monitoring
+pyinstrument==4.5.3             # Python profiler
+memray==1.10.0                  # Memory profiler
+py-spy==0.3.14                  # Sampling profiler for Python programs
+
+# =============================================================================
+# Security
+# =============================================================================
+cryptography==41.0.3            # Cryptographic recipes and primitives
+passlib==1.7.4                  # Password hashing library
+PyJWT==2.8.0                    # JSON Web Token implementation
+python-jose==3.3.0              # JavaScript Object Signing and Encryption
+bcrypt==4.0.1                   # Modern password hashing
+
+# Version pinning note:
+# Versions are deliberately pinned for reproducibility.
+# Review and update quarterly or when security patches are released.
