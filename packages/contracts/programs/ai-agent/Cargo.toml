@@ -1,0 +1,216 @@
+[package]
+name = "minos-ai-agent"
+version = "0.1.0"
+description = "AI Agent smart contract for automated trading strategies on the Minos-AI platform"
+authors = ["Minos-AI Team <dev@minos-ai.com>"]
+repository = "https://github.com/minos-ai/minos-ai"
+license = "Proprietary"
+readme = "README.md"
+keywords = ["solana", "anchor", "blockchain", "ai", "trading"]
+categories = ["cryptography::cryptocurrencies", "finance"]
+homepage = "https://minos-ai.com"
+documentation = "https://docs.minos-ai.com"
+edition = "2021"
+rust-version = "1.71.0"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "minos_ai_agent"
+path = "src/lib.rs"
+doctest = false
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = []
+test-bpf = []
+staging = ["solana-program/staging"]
+production = []
+mainnet-beta = ["production"]
+devnet = ["staging"]
+testnet = ["staging"]
+localnet = []
+verbose-errors = []
+
+[dependencies]
+# Solana ecosystem dependencies
+anchor-lang = { version = "0.28.0", features = ["init-if-needed"] }
+anchor-spl = { version = "0.28.0", features = ["metadata", "stake", "governance"] }
+solana-program = { version = "1.16.0", features = ["extension-module"] }
+spl-token = { version = "4.0.0", features = ["no-entrypoint"] }
+spl-associated-token-account = { version = "2.0.0", features = ["no-entrypoint"] }
+spl-token-metadata = { version = "0.0.1", features = ["no-entrypoint"] }
+spl-token-2022 = { version = "0.7.0", features = ["no-entrypoint"] }
+pyth-sdk-solana = "0.8.0"
+switchboard-v2 = "0.4.0"
+metaplex-token-metadata = { version = "0.0.3", features = ["no-entrypoint"] }
+solana-security-txt = "1.1.1"
+mpl-token-metadata = { version = "1.13.1", features = ["no-entrypoint"] }
+
+# Core dependencies
+borsh = "0.10.3"
+thiserror = "1.0.40"
+bytemuck = { version = "1.13.1", features = ["derive", "min_const_generics"] }
+num-derive = "0.3.3"
+num-traits = "0.2.15"
+arrayref = "0.3.7"
+enum_dispatch = "0.3.11"
+static_assertions = "1.1.0"
+paste = "1.0.12"
+cfg-if = "1.0.0"
+bitflags = "2.2.1"
+once_cell = "1.17.1"
+indexmap = { version = "2.0.0", features = ["serde"] }
+futures = "0.3.28"
+async-trait = "0.1.68"
+wasm-bindgen = { version = "0.2.86", optional = true }
+
+# Cryptographic libraries
+sha2 = "0.10.6"
+hmac = "0.12.1"
+ed25519-dalek = { version = "2.0.0", features = ["serde", "batch"] }
+curve25519-dalek = { version = "4.1.1", features = ["serde"] }
+rand = { version = "0.8.5", features = ["small_rng"] }
+aes-gcm = "0.10.2"
+bs58 = "0.4.0"
+base64 = "0.21.0"
+merkle-tree = { version = "0.3.0", default-features = false }
+ring = { version = "0.16.20", features = ["std"] }
+
+# Serialization/Deserialization
+serde = { version = "1.0.159", features = ["derive", "rc"] }
+serde_json = "1.0.95"
+serde_bytes = "0.11.9"
+bincode = "1.3.3"
+bcs = "0.1.5"
+postcard = { version = "1.0.4", features = ["alloc"] }
+
+# Numerical computation for AI model weights and operations
+ndarray = { version = "0.15.6", features = ["serde", "rayon"] }
+half = { version = "2.3.1", features = ["serde", "num-traits", "rand", "bytemuck"] }
+num = { version = "0.4.0", features = ["serde"] }
+nalgebra = { version = "0.32.2", features = ["serde", "rand"] }
+statrs = "0.16.0"
+rand_distr = "0.4.3"
+ndarray-stats = "0.5.1"
+linfa = { version = "0.6.1", features = ["serde"] }
+linfa-clustering = "0.6.1"
+quantiles = "0.7.1"
+pdqselect = "0.1.1"
+rayon = "1.7.0"
+
+# Time handling and scheduling
+chrono = { version = "0.4.24", default-features = false, features = ["alloc", "serde"] }
+clockwork-client = "2.0.2"
+cron = "0.12.0"
+
+# Error handling and logging
+log = { version = "0.4.17", features = ["serde"] }
+solana-logger = "1.16.0"
+anyhow = "1.0.70"
+tracing = "0.1.37"
+tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
+
+# Configuration management
+config = { version = "0.13.3", features = ["toml", "json"] }
+dotenv = "0.15.0"
+
+# Metrics and monitoring
+prometheus = { version = "0.13.3", default-features = false }
+metrics = "0.21.0"
+
+# Optional wasm support for web interfaces
+getrandom = { version = "0.2.9", features = ["js"], optional = true }
+wasm-logger = { version = "0.2.0", optional = true }
+console_error_panic_hook = { version = "0.1.7", optional = true }
+
+[dev-dependencies]
+anchor-client = "0.28.0"
+solana-program-test = "1.16.0"
+solana-sdk = "1.16.0"
+solana-validator = "1.16.0"
+solana-banks-client = "1.16.0"
+solana-banks-server = "1.16.0"
+tokio = { version = "1.27.0", features = ["full", "test-util"] }
+rstest = "0.17.0"
+proptest = "1.1.0"
+mockall = "0.11.4"
+approx = "0.5.1"
+criterion = { version = "0.5.1", features = ["async_tokio", "html_reports"] }
+tempfile = "3.5.0"
+assert_matches = "1.5.0"
+serial_test = "2.0.0"
+crc32fast = "1.3.2"
+either = "1.8.1"
+pretty_assertions = "1.3.0"
+test-case = "3.1.0"
+serde_test = "1.0.159"
+hex = "0.4.3"
+pretty_env_logger = "0.5.0"
+lazy_static = "1.4.0"
+
+# Fuzzing for security testing
+honggfuzz = { version = "0.5.55", optional = true }
+arbitrary = { version = "1.3.0", features = ["derive"], optional = true }
+afl = { version = "0.13.5", optional = true }
+
+[[bench]]
+name = "model_inference"
+harness = false
+
+[[bench]]
+name = "signal_verification"
+harness = false
+
+[[bench]]
+name = "instruction_processing"
+harness = false
+
+[profile.release]
+codegen-units = 1        # Compile crates one after another so the compiler can optimize better
+debug = false            # No debug info at all
+debug-assertions = false # No debug assertions
+incremental = false      # Disable incremental compilation
+lto = true               # Enable link-time optimization
+opt-level = 3            # Optimize for maximum performance
+overflow-checks = true   # Check integer arithmetic for overflow
+panic = "abort"          # Abort on panic
+rpath = false            # Disable rpath
+strip = "symbols"        # Strip symbols from binary
+
+[profile.bench]
+codegen-units = 1
+debug = false
+debug-assertions = false
+incremental = false
+lto = true
+opt-level = 3
+overflow-checks = false
+rpath = false
+
+[profile.dev.package."*"]
+codegen-units = 1
+debug = false
+debug-assertions = false
+opt-level = 3
+
+[profile.test]
+opt-level = 1            # Fast compile times for tests
+
+[workspace]
+members = [
+    ".",
+    # No other workspace members for this specific crate
+]
+
+[package.metadata.docs.rs]
+features = ["verbose-errors"]
+rustdoc-args = ["--cfg", "docsrs"]
+
+[package.metadata.solana-program]
+upgradeable = true
+security-txt = "https://minos-ai.com/.well-known/security.txt"
+minimal-deploy-size = true
