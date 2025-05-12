@@ -1,0 +1,259 @@
+name: Test
+
+on:
+  push:
+    branches: [main, develop, release/*]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/*.md'
+  pull_request:
+    branches: [main, develop, release/*]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/*.md'
+  workflow_dispatch:
+    inputs:
+      debug:
+        type: boolean
+        description: 'Run with debug logging'
+        required: false
+        default: false
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  NODE_ENV: test
+  SOLANA_VERSION: 1.16.13
+
+jobs:
+  test-js:
+    name: Test JavaScript/TypeScript Code
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+      
+      # Install and cache dependencies
+      - name: Cache node modules
+        uses: actions/cache@v3
+        id: cache-npm
+        with:
+          path: |
+            **/node_modules
+            ~/.npm
+          key: ${{ runner.os }}-npm-${{ matrix.node-version }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-${{ matrix.node-version }}-
+      
+      - name: Install dependencies
+        if: steps.cache-npm.outputs.cache-hit != 'true'
+        run: npm ci
+      
+      - name: Check for circular dependencies
+        run: npx madge --circular --extensions ts ./sdk/src
+      
+      - name: Run ESLint
+        run: npm run lint
+      
+      - name: Run type checking
+        run: npx tsc --noEmit
+      
+      - name: Build packages
+        run: npm run build
+      
+      - name: Run unit tests
+        run: npm run test:unit
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+      
+      - name: Generate coverage report
+        run: npm run test:coverage
+      
+      - name: Upload test coverage
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          directory: ./coverage
+          flags: unittests,node-${{ matrix.node-version }}
+          name: codecov-node
+          fail_ci_if_error: false
+  
+  test-rust:
+    name: Test Rust Code
+    runs-on: ubuntu-latest
+    needs: []
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+          components: rustfmt, clippy
+      
+      - name: Cache Rust dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            packages/contracts/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+      
+      - name: Setup Solana
+        uses: solana-labs/setup-solana@v1
+        with:
+          solana-version: ${{ env.SOLANA_VERSION }}
+      
+      - name: Run cargo fmt
+        working-directory: packages/contracts
+        run: cargo fmt --all -- --check
+      
+      - name: Run cargo clippy
+        working-directory: packages/contracts
+        run: cargo clippy --all-targets -- -D warnings
+      
+      - name: Build Rust code
+        working-directory: packages/contracts
+        run: cargo build --all
+      
+      - name: Run Rust tests
+        working-directory: packages/contracts
+        run: cargo test --all
+  
+  integration-test:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: [test-js, test-rust]
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18.x
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Setup Solana
+        uses: solana-labs/setup-solana@v1
+        with:
+          solana-version: ${{ env.SOLANA_VERSION }}
+      
+      - name: Start local validator
+        run: |
+          solana-test-validator --bpf-program VAuLTdv3LgriVLrkhQyLfJxeCRwR8sgJQwKrxh5uq3vF ./packages/contracts/target/deploy/vault-keypair.so --bpf-program A1Gnt9e6Z9wVz3uAevz5HvQd8RL7SvEJQV5L9eCTQb4V ./packages/contracts/target/deploy/ai_agent-keypair.so --bpf-program GoVErnXiC97U9ZX1uyMtZAh4cTsZxTNFTaUyMcfP6K4 ./packages/contracts/target/deploy/governance-keypair.so --reset --quiet &
+          sleep 5
+          solana config set --url localhost
+      
+      - name: Build all packages
+        run: npm run build:all
+      
+      - name: Run integration tests
+        run: npm run test:integration
+        env:
+          SOLANA_PRIVATE_KEY: ${{ secrets.SOLANA_PRIVATE_KEY }}
+          SOLANA_RPC_URL: http://localhost:8899
+          LOG_LEVEL: debug
+      
+      - name: Upload test logs
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: integration-test-logs
+          path: logs/
+          retention-days: 7
+  
+  e2e-test:
+    name: End-to-End Tests
+    runs-on: ubuntu-latest
+    needs: [integration-test]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18.x
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Setup Solana
+        uses: solana-labs/setup-solana@v1
+        with:
+          solana-version: ${{ env.SOLANA_VERSION }}
+      
+      - name: Run end-to-end tests against devnet
+        run: npm run test:e2e
+        env:
+          SOLANA_PRIVATE_KEY: ${{ secrets.SOLANA_PRIVATE_KEY }}
+          SOLANA_RPC_URL: https://api.devnet.solana.com
+          API_KEY: ${{ secrets.API_KEY }}
+      
+      - name: Upload E2E test logs
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: e2e-test-logs
+          path: logs/
+          retention-days: 7
+  
+  test-complete:
+    name: All Tests Complete
+    runs-on: ubuntu-latest
+    needs: [test-js, test-rust, integration-test]
+    if: always()
+    
+    steps:
+      - name: Check test results
+        run: |
+          if [[ "${{ needs.test-js.result }}" == "success" && \
+                "${{ needs.test-rust.result }}" == "success" && \
+                "${{ needs.integration-test.result }}" == "success" ]]; then
+            echo "All tests passed!"
+            exit 0
+          else
+            echo "Some tests failed!"
+            exit 1
+          fi
+      
+      - name: Notify Slack on failure
+        if: failure()
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_CHANNEL: ci-failures
+          SLACK_COLOR: danger
+          SLACK_MESSAGE: 'Test workflow failed on ${{ github.ref_name }}'
+          SLACK_TITLE: CI Failure
+          SLACK_FOOTER: 'Minos-AI CI/CD'

@@ -1,0 +1,342 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'devnet'
+        type: choice
+        options:
+          - devnet
+          - testnet
+          - mainnet
+
+env:
+  CARGO_TERM_COLOR: always
+  SOLANA_VERSION: 1.16.13
+  NODE_VERSION: 18.x
+  ANCHOR_VERSION: 0.28.0
+
+jobs:
+  prepare:
+    name: Prepare Deployment
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.set-env.outputs.environment }}
+      version: ${{ steps.set-version.outputs.version }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Setup environment
+        id: set-env
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            echo "environment=mainnet" >> $GITHUB_OUTPUT
+          else
+            echo "environment=devnet" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Set version
+        id: set-version
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+          else
+            SHA=$(git rev-parse --short ${{ github.sha }})
+            VERSION=$(jq -r .version package.json)-dev-${SHA}
+          fi
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Setting version to ${VERSION}"
+
+  build:
+    name: Build and Package
+    runs-on: ubuntu-latest
+    needs: prepare
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      
+      - name: Setup Solana
+        uses: solana-labs/setup-solana@v1
+        with:
+          solana-version: ${{ env.SOLANA_VERSION }}
+      
+      - name: Install Anchor CLI
+        run: |
+          npm install -g @project-serum/anchor-cli@${{ env.ANCHOR_VERSION }}
+          anchor --version
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build TypeScript packages
+        run: npm run build
+      
+      - name: Build Anchor programs
+        working-directory: packages/contracts
+        run: anchor build
+      
+      - name: Update version
+        run: |
+          echo "Setting version to ${{ needs.prepare.outputs.version }}"
+          npm version --no-git-tag-version ${{ needs.prepare.outputs.version }}
+          jq '.version = "${{ needs.prepare.outputs.version }}"' ./sdk/package.json > tmp.json && mv tmp.json ./sdk/package.json
+      
+      - name: Package SDK
+        working-directory: sdk
+        run: npm pack
+      
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-artifacts
+          path: |
+            sdk/*.tgz
+            packages/contracts/target/deploy/*.so
+            packages/contracts/target/idl/*.json
+          retention-days: 7
+
+  deploy-programs:
+    name: Deploy Programs
+    runs-on: ubuntu-latest
+    needs: [prepare, build]
+    environment: ${{ needs.prepare.outputs.environment }}
+    if: needs.prepare.outputs.environment != 'mainnet' || startsWith(github.ref, 'refs/tags/v')
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      
+      - name: Setup Solana
+        uses: solana-labs/setup-solana@v1
+        with:
+          solana-version: ${{ env.SOLANA_VERSION }}
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      
+      - name: Install Anchor CLI
+        run: |
+          npm install -g @project-serum/anchor-cli@${{ env.ANCHOR_VERSION }}
+          anchor --version
+      
+      - name: Download build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: build-artifacts
+      
+      - name: Setup Solana Configuration
+        run: |
+          mkdir -p ~/.config/solana
+          echo "${{ secrets.SOLANA_KEYPAIR }}" > ~/.config/solana/id.json
+          solana config set --url ${{ needs.prepare.outputs.environment == 'mainnet' && 'https://api.mainnet-beta.solana.com' || (needs.prepare.outputs.environment == 'testnet' && 'https://api.testnet.solana.com' || 'https://api.devnet.solana.com') }}
+      
+      - name: Deploy Programs
+        run: |
+          echo "Deploying to ${{ needs.prepare.outputs.environment }}..."
+          
+          # Set program IDs based on environment
+          if [[ "${{ needs.prepare.outputs.environment }}" == "mainnet" ]]; then
+            VAULT_PROGRAM_ID="VAuLTv1LgriVLrkhQyLfJxeCRwR8sgJQwKrxh5uqnkxN"
+            AI_AGENT_PROGRAM_ID="A1Gnt9e6Z9wVz3uAevz5HvQd8RL7SvEJQV5L9eCTQCDx"
+            GOV_PROGRAM_ID="GoVErnXiC97U9ZX1uyMtZAh4cTsZxTNFTaUyMcfP6Nv"
+          elif [[ "${{ needs.prepare.outputs.environment }}" == "testnet" ]]; then
+            VAULT_PROGRAM_ID="VAuLTdv3LgriVLrkhQyLfJxeCRwR8sgJQwKrxh5uq7XN"
+            AI_AGENT_PROGRAM_ID="A1Gnt9e6Z9wVz3uAevz5HvQd8RL7SvEJQV5L9eCTQdvQ"
+            GOV_PROGRAM_ID="GoVErnXiC97U9ZX1uyMtZAh4cTsZxTNFTaUyMcfP6L2"
+          else
+            VAULT_PROGRAM_ID="VAuLTdv3LgriVLrkhQyLfJxeCRwR8sgJQwKrxh5uqZzM"
+            AI_AGENT_PROGRAM_ID="A1Gnt9e6Z9wVz3uAevz5HvQd8RL7SvEJQV5L9eCTQvqB"
+            GOV_PROGRAM_ID="GoVErnXiC97U9ZX1uyMtZAh4cTsZxTNFTaUyMcfP6M3"
+          fi
+          
+          # Deploy each program
+          solana program deploy packages/contracts/target/deploy/vault.so --program-id $VAULT_PROGRAM_ID
+          solana program deploy packages/contracts/target/deploy/ai_agent.so --program-id $AI_AGENT_PROGRAM_ID
+          solana program deploy packages/contracts/target/deploy/governance.so --program-id $GOV_PROGRAM_ID
+          
+          echo "Deployment complete!"
+      
+      - name: Verify Deployment
+        run: |
+          echo "Verifying deployment on ${{ needs.prepare.outputs.environment }}..."
+          
+          if [[ "${{ needs.prepare.outputs.environment }}" == "mainnet" ]]; then
+            VAULT_PROGRAM_ID="VAuLTv1LgriVLrkhQyLfJxeCRwR8sgJQwKrxh5uqnkxN"
+            AI_AGENT_PROGRAM_ID="A1Gnt9e6Z9wVz3uAevz5HvQd8RL7SvEJQV5L9eCTQCDx"
+            GOV_PROGRAM_ID="GoVErnXiC97U9ZX1uyMtZAh4cTsZxTNFTaUyMcfP6Nv"
+          elif [[ "${{ needs.prepare.outputs.environment }}" == "testnet" ]]; then
+            VAULT_PROGRAM_ID="VAuLTdv3LgriVLrkhQyLfJxeCRwR8sgJQwKrxh5uq7XN"
+            AI_AGENT_PROGRAM_ID="A1Gnt9e6Z9wVz3uAevz5HvQd8RL7SvEJQV5L9eCTQdvQ"
+            GOV_PROGRAM_ID="GoVErnXiC97U9ZX1uyMtZAh4cTsZxTNFTaUyMcfP6L2"
+          else
+            VAULT_PROGRAM_ID="VAuLTdv3LgriVLrkhQyLfJxeCRwR8sgJQwKrxh5uqZzM"
+            AI_AGENT_PROGRAM_ID="A1Gnt9e6Z9wVz3uAevz5HvQd8RL7SvEJQV5L9eCTQvqB"
+            GOV_PROGRAM_ID="GoVErnXiC97U9ZX1uyMtZAh4cTsZxTNFTaUyMcfP6M3"
+          fi
+          
+          # Verify each program
+          solana program show $VAULT_PROGRAM_ID
+          solana program show $AI_AGENT_PROGRAM_ID
+          solana program show $GOV_PROGRAM_ID
+      
+      - name: Initialize Programs
+        if: needs.prepare.outputs.environment != 'mainnet'
+        run: npm run scripts:initialize -- --env ${{ needs.prepare.outputs.environment }}
+  
+  deploy-sdk:
+    name: Publish SDK
+    runs-on: ubuntu-latest
+    needs: [prepare, build]
+    if: startsWith(github.ref, 'refs/tags/v')
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          registry-url: 'https://registry.npmjs.org'
+      
+      - name: Download build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: build-artifacts
+      
+      - name: Publish to NPM
+        run: |
+          cd sdk
+          npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Release ${{ needs.prepare.outputs.version }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            sdk/*.tgz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  
+  deploy-backend:
+    name: Deploy Backend Services
+    runs-on: ubuntu-latest
+    needs: [prepare, deploy-programs]
+    environment: ${{ needs.prepare.outputs.environment }}
+    if: needs.prepare.outputs.environment != 'mainnet' || startsWith(github.ref, 'refs/tags/v')
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build backend
+        run: |
+          cd packages/backend
+          npm run build
+      
+      - name: Build indexer
+        run: |
+          cd packages/indexer
+          npm run build
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-2
+      
+      - name: Deploy to AWS ECS
+        run: |
+          ENV="${{ needs.prepare.outputs.environment }}"
+          VERSION="${{ needs.prepare.outputs.version }}"
+          
+          echo "Deploying backend services v$VERSION to $ENV environment..."
+          
+          # Build and push Docker images
+          aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin ${{ secrets.AWS_ECR_REGISTRY }}
+          
+          # Backend service
+          docker build -t ${{ secrets.AWS_ECR_REGISTRY }}/minos-ai-backend:$VERSION -f docker/$ENV/Dockerfile.backend .
+          docker push ${{ secrets.AWS_ECR_REGISTRY }}/minos-ai-backend:$VERSION
+          
+          # Indexer service
+          docker build -t ${{ secrets.AWS_ECR_REGISTRY }}/minos-ai-indexer:$VERSION -f docker/$ENV/Dockerfile.indexer .
+          docker push ${{ secrets.AWS_ECR_REGISTRY }}/minos-ai-indexer:$VERSION
+          
+          # Update ECS services
+          aws ecs update-service --cluster minos-ai-$ENV --service minos-ai-backend-$ENV --force-new-deployment
+          aws ecs update-service --cluster minos-ai-$ENV --service minos-ai-indexer-$ENV --force-new-deployment
+          
+          echo "Deployment complete!"
+      
+      - name: Notify deployment
+        run: |
+          ENV="${{ needs.prepare.outputs.environment }}"
+          VERSION="${{ needs.prepare.outputs.version }}"
+          
+          curl -X POST -H "Content-Type: application/json" \
+            -d "{\"text\":\"🚀 Successfully deployed v$VERSION to $ENV environment\"}" \
+            ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  deploy-complete:
+    name: Deployment Complete
+    runs-on: ubuntu-latest
+    needs: [deploy-programs, deploy-sdk, deploy-backend]
+    if: always()
+    
+    steps:
+      - name: Deployment status
+        run: |
+          if [[ "${{ needs.deploy-programs.result }}" == "success" && \
+                "${{ needs.deploy-backend.result }}" == "success" && \
+                ("${{ needs.deploy-sdk.result }}" == "success" || "${{ needs.deploy-sdk.result }}" == "skipped") ]]; then
+            echo "✅ Deployment completed successfully!"
+            exit 0
+          else
+            echo "❌ Deployment failed!"
+            exit 1
+          fi
