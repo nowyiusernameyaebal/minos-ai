@@ -1,0 +1,225 @@
+[package]
+name = "minos-governance"
+version = "0.1.0"
+description = """
+Decentralized governance protocol for the Minos-AI platform providing sophisticated on-chain
+governance mechanisms featuring advanced voting systems, delegated representation, quadratic
+voting, proposal execution with timelock functionality, governance simulation, and cross-program
+authority management with integrated risk mitigation and security measures.
+"""
+edition = "2021"
+license = "MIT"
+authors = [
+    "Minos-AI Core Team <core@minos-ai.com>",
+    "Minos-AI Research Division <research@minos-ai.com>",
+    "Governance Protocol Contributors <governance@minos-ai.com>"
+]
+repository = "https://github.com/minos-ai/minos-ai"
+documentation = "https://docs.minos-ai.com/governance"
+homepage = "https://minos-ai.com/governance"
+readme = "README.md"
+keywords = [
+    "solana", 
+    "anchor", 
+    "governance", 
+    "dao", 
+    "defi",
+    "voting",
+    "decentralized",
+    "proposal",
+    "timelock"
+]
+categories = [
+    "blockchain", 
+    "cryptography", 
+    "finance",
+    "web3",
+    "decentralized-finance"
+]
+exclude = [
+    ".github/",
+    ".gitignore",
+    "node_modules/",
+    "tests/fixtures"
+]
+publish = false
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "minos_governance"
+path = "src/lib.rs"
+doctest = false
+
+[features]
+# Disable program entrypoint for integration tests
+no-entrypoint = []
+# Disable IDL generation for non-entrypoint builds
+no-idl = []
+# Disable instruction name logging for production builds
+no-log-ix-name = []
+# Enable features needed for cross-program invocation
+cpi = ["no-entrypoint"]
+# Default features selected for normal builds
+default = []
+# Environment-specific feature flags
+devnet = ["debug-logs", "dev-constraints"]
+testnet = ["debug-logs", "test-constraints"]
+mainnet = ["no-log-ix-name", "prod-constraints"]
+# Testing feature flags
+test-bpf = []
+# Debug logging for development and auditing
+debug-logs = []
+# Security constraint levels
+dev-constraints = []
+test-constraints = []
+prod-constraints = []
+# Simulation feature for debugging governance proposals
+simulation = []
+# Feature flags for experimental protocol features
+experimental-vote-delegation = []
+experimental-quadratic-voting = []
+experimental-time-weighted-voting = []
+# Enable memory tracking diagnostics
+memory-diagnostics = []
+
+[dependencies]
+# Core Anchor and Solana dependencies
+anchor-lang = { version = "0.27.0", features = ["init-if-needed", "event"] }
+anchor-spl = { version = "0.27.0" }
+solana-program = "1.16.0"
+solana-security-utils = "1.16.0"
+solana-address-lookup-table-program = "1.16.0"
+
+# SPL Token Programs
+spl-token = { version = "3.5.0", features = ["no-entrypoint"] }
+spl-associated-token-account = { version = "1.1.3", features = ["no-entrypoint"] }
+spl-governance = { version = "0.3.0", features = ["no-entrypoint"], optional = true }
+spl-memo = { version = "3.0.1", features = ["no-entrypoint"] }
+spl-token-2022 = { version = "0.6.0", features = ["no-entrypoint"] }
+spl-token-metadata-interface = { version = "0.2.0" }
+
+# Internal program dependencies
+minos-vault = { path = "../vault", features = ["cpi"] }
+minos-ai-agent = { path = "../ai-agent", features = ["cpi"] }
+minos-common = { path = "../../common", features = ["governance"] }
+
+# Serialization/Deserialization
+borsh = "0.10.0"
+bytemuck = { version = "1.13.1", features = ["derive", "min_const_generics", "extern_crate_alloc"] }
+bincode = "1.3.3"
+
+# Cryptography
+sha2 = "0.10.6"
+sha3 = "0.10.8"
+hmac = "0.12.1"
+ed25519-dalek = { version = "1.0.1", optional = true }
+
+# Utilities
+thiserror = "1.0.40"
+num-traits = "0.2.15"
+num-derive = "0.3.3"
+num-enum = "0.6.1"
+arrayref = "0.3.7"
+static_assertions = "1.1.0"
+itertools = "0.10.5"
+hex = "0.4.3"
+base64 = "0.21.0"
+log = "0.4.19"
+subtle = "2.5.0"
+bitflags = "1.3.2"
+
+# Advanced data structures
+im = { version = "15.1.0", features = ["serde"] }
+dashmap = { version = "5.4.0", optional = true }
+ahash = "0.8.3"
+
+# Time utilities for governance timing functions
+chrono = { version = "0.4.26", default-features = false, features = ["alloc"] }
+
+# Optional features for simulation and analysis
+rand = { version = "0.8.5", optional = true, features = ["small_rng"] }
+statrs = { version = "0.16.0", optional = true }
+
+[dev-dependencies]
+# Solana development and testing dependencies
+solana-sdk = "1.16.0"
+solana-program-test = "1.16.0"
+solana-logger = "1.16.0"
+solana-vote-program = "1.16.0"
+solana-banks-client = "1.16.0"
+
+# Async runtime for tests
+tokio = { version = "1.28.2", features = ["full"] }
+
+# Testing frameworks and utilities
+rand = "0.8.5"
+rand_chacha = "0.3.1"
+anyhow = "1.0.71"
+assert_matches = "1.5.0"
+pretty_assertions = "1.3.0"
+proptest = "1.2.0"
+test-case = "3.1.0"
+criterion = "0.5.1"
+rstest = "0.17.0"
+mockall = "0.11.4"
+async-trait = "0.1.68"
+
+# Serialization for test fixtures
+serde = { version = "1.0.163", features = ["derive", "rc"] }
+serde_json = "1.0.96"
+serde_yaml = "0.9.21"
+
+# Documentation testing
+doc-comment = "0.3.3"
+
+# Simulation dependencies
+fake = { version = "2.6.1", features = ["derive"] }
+sim = { version = "0.4.0", optional = true }
+
+# Test HTTP client for integration tests against local validator
+reqwest = { version = "0.11.18", features = ["json", "blocking"] }
+
+[build-dependencies]
+rustc_version = "0.4.0"
+
+[[bench]]
+name = "voting_benchmark"
+harness = false
+path = "benches/voting_benchmark.rs"
+
+[package.metadata.docs.rs]
+features = ["simulation", "experimental-vote-delegation"]
+rustdoc-args = ["--cfg", "docsrs"]
+
+[package.metadata.solana]
+upgrade-authority = "GovUpgradeAuth1111111111111111111111111111"
+
+[profile.release]
+overflow-checks = true
+lto = "fat"
+codegen-units = 1
+opt-level = 3
+panic = "abort"
+strip = "symbols"
+debug = false
+incremental = false
+
+[profile.production]
+inherits = "release"
+lto = "fat"
+codegen-units = 1
+opt-level = 3
+overflow-checks = true
+panic = "abort"
+strip = true
+
+[profile.test]
+opt-level = 1
+debug = true
+debug-assertions = true
+overflow-checks = true
+incremental = true
+
+[profile.dev.package."*"]
+opt-level = 3
+debug = false
