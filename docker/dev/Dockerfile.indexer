@@ -1,0 +1,431 @@
+# Multi-stage Dockerfile for Indexer Service
+# Optimized for development with real-time blockchain indexing and debugging
+
+# =====================================
+# Base Node.js Image
+# =====================================
+FROM node:20-alpine AS base
+
+# Install system dependencies and blockchain tools
+RUN apk update && apk add --no-cache \
+    dumb-init \
+    curl \
+    bash \
+    git \
+    openssh \
+    python3 \
+    make \
+    g++ \
+    libc6-compat \
+    ca-certificates \
+    && rm -rf /var/cache/apk/*
+
+# Set up non-root user for security
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001 -G nodejs -h /home/nodejs
+
+# Create app directory with proper permissions
+WORKDIR /app
+RUN chown nodejs:nodejs /app
+
+# =====================================
+# Dependencies Stage
+# =====================================
+FROM base AS dependencies
+
+# Switch to nodejs user
+USER nodejs
+
+# Copy package files
+COPY --chown=nodejs:nodejs package*.json ./
+COPY --chown=nodejs:nodejs pnpm-lock.yaml* ./
+
+# Install pnpm for better package management
+RUN npm install -g pnpm@8
+
+# Set npm registry and configure for enterprise environments
+RUN pnpm config set registry https://registry.npmjs.org/ && \
+    pnpm config set fetch-timeout 600000 && \
+    pnpm config set network-timeout 600000
+
+# Install dependencies with production optimizations
+RUN --mount=type=cache,target=/home/nodejs/.pnpm-store,uid=1001,gid=1001 \
+    pnpm install --frozen-lockfile --prefer-offline
+
+# =====================================
+# Development Build Stage
+# =====================================
+FROM dependencies AS development
+
+# Install development dependencies
+RUN --mount=type=cache,target=/home/nodejs/.pnpm-store,uid=1001,gid=1001 \
+    pnpm install --dev --frozen-lockfile
+
+# Set development environment variables
+ENV NODE_ENV=development
+ENV DEBUG=*
+ENV LOG_LEVEL=debug
+ENV ENABLE_SOURCE_MAPS=true
+ENV ENABLE_DEBUG_LOGS=true
+ENV INDEXER_DEBUG=true
+
+# Create necessary directories for indexer operations
+RUN mkdir -p \
+    /app/logs \
+    /app/cache \
+    /app/data \
+    /app/snapshots \
+    /app/metrics \
+    /app/temp && \
+    chown -R nodejs:nodejs \
+    /app/logs \
+    /app/cache \
+    /app/data \
+    /app/snapshots \
+    /app/metrics \
+    /app/temp
+
+# Copy source code with proper ownership
+COPY --chown=nodejs:nodejs . .
+
+# Create TypeScript build configuration for development
+RUN echo '{\n\
+  "extends": "./tsconfig.json",\n\
+  "compilerOptions": {\n\
+    "sourceMap": true,\n\
+    "incremental": true,\n\
+    "tsBuildInfoFile": ".tsbuildinfo",\n\
+    "outDir": "./dist",\n\
+    "rootDir": "./src"\n\
+  },\n\
+  "watchOptions": {\n\
+    "watchFile": "useFsEvents",\n\
+    "watchDirectory": "useFsEvents",\n\
+    "fallbackPolling": "dynamicPriority",\n\
+    "excludeDirectories": ["node_modules", "dist", "logs", "cache"]\n\
+  }\n\
+}' > /app/tsconfig.dev.json
+
+# Install global development tools
+RUN pnpm add -g nodemon tsx ts-node-dev @types/node
+
+# Build application in development mode
+RUN pnpm run build:dev || (echo "Build failed, continuing with ts-node..." && mkdir -p dist && echo "module.exports = {}" > dist/index.js)
+
+# Set up indexer development script
+RUN echo '#!/bin/bash\n\
+set -e\n\
+\n\
+# Color codes for output\n\
+RED='"'"'\033[0;31m'"'"'\n\
+GREEN='"'"'\033[0;32m'"'"'\n\
+YELLOW='"'"'\033[1;33m'"'"'\n\
+BLUE='"'"'\033[0;34m'"'"'\n\
+PURPLE='"'"'\033[0;35m'"'"'\n\
+CYAN='"'"'\033[0;36m'"'"'\n\
+NC='"'"'\033[0m'"'"' # No Color\n\
+\n\
+echo -e "${GREEN}🚀 Starting Minos Indexer Development Environment${NC}"\n\
+\n\
+# Wait for dependencies\n\
+echo -e "${YELLOW}⏳ Waiting for database connection...${NC}"\n\
+until nc -z postgres 5432; do\n\
+  echo -e "${BLUE}⏳ Waiting for postgres...${NC}"\n\
+  sleep 2\n\
+done\n\
+\n\
+until nc -z redis 6379; do\n\
+  echo -e "${BLUE}⏳ Waiting for redis...${NC}"\n\
+  sleep 2\n\
+done\n\
+\n\
+echo -e "${YELLOW}⏳ Waiting for Solana validator...${NC}"\n\
+until curl -s http://solana-validator:8899/health | grep -q "ok"; do\n\
+  echo -e "${BLUE}⏳ Waiting for solana-validator...${NC}"\n\
+  sleep 5\n\
+done\n\
+\n\
+echo -e "${GREEN}✅ All dependencies ready!${NC}"\n\
+\n\
+# Initialize indexer if needed\n\
+if [ -f "/app/scripts/init-indexer.ts" ]; then\n\
+  echo -e "${PURPLE}🔧 Initializing indexer state...${NC}"\n\
+  tsx /app/scripts/init-indexer.ts || echo -e "${RED}⚠️  Indexer initialization failed or not available${NC}"\n\
+fi\n\
+\n\
+# Run database migrations if available\n\
+if [ -f "/app/scripts/migrate.ts" ]; then\n\
+  echo -e "${PURPLE}🔧 Running database migrations...${NC}"\n\
+  tsx /app/scripts/migrate.ts || echo -e "${RED}⚠️  Migration failed or not available${NC}"\n\
+fi\n\
+\n\
+# Set up resource monitoring\n\
+if [ "$ENABLE_RESOURCE_MONITORING" = "true" ]; then\n\
+  echo -e "${CYAN}📊 Starting resource monitoring...${NC}"\n\
+  (\n\
+    while true; do\n\
+      ps -o pid,ppid,cmd,%mem,%cpu --sort=-%cpu | head -20\n\
+      echo "---"\n\
+      sleep 30\n\
+    done\n\
+  ) > /app/logs/resource-monitor.log 2>&1 &\n\
+fi\n\
+\n\
+# Start application with hot reload\n\
+if [ "$ENABLE_DEBUGGER" = "true" ]; then\n\
+  echo -e "${GREEN}🔧 Starting with debugger on port $DEBUG_PORT${NC}"\n\
+  exec nodemon \\\n\
+    --exec "node --inspect=0.0.0.0:$DEBUG_PORT -r ts-node/register" \\\n\
+    --ext ts,js,json \\\n\
+    --ignore node_modules/ \\\n\
+    --ignore dist/ \\\n\
+    --ignore logs/ \\\n\
+    --ignore cache/ \\\n\
+    src/index.ts\n\
+else\n\
+  echo -e "${GREEN}🔧 Starting with standard hot reload${NC}"\n\
+  exec nodemon \\\n\
+    --exec tsx \\\n\
+    --ext ts,js,json \\\n\
+    --ignore node_modules/ \\\n\
+    --ignore dist/ \\\n\
+    --ignore logs/ \\\n\
+    --ignore cache/ \\\n\
+    src/index.ts\n\
+fi\n\
+' > /app/start-indexer-dev.sh && chmod +x /app/start-indexer-dev.sh
+
+# Create enhanced health check script for indexer
+RUN echo '#!/bin/bash\n\
+# Enhanced health check for indexer service\n\
+\n\
+# Check main service health\n\
+if ! curl -f http://localhost:${PORT:-3001}/health; then\n\
+  echo "Service health check failed"\n\
+  exit 1\n\
+fi\n\
+\n\
+# Check indexer-specific metrics\n\
+if curl -s http://localhost:${PORT:-3001}/metrics | grep -q "indexer_blocks_processed"; then\n\
+  echo "Indexer metrics available"\n\
+else\n\
+  echo "Warning: Indexer metrics not available"\n\
+fi\n\
+\n\
+# Check database connectivity\n\
+if ! pg_isready -h postgres -p 5432 -U minos_dev; then\n\
+  echo "Database connection failed"\n\
+  exit 1\n\
+fi\n\
+\n\
+# Check Redis connectivity\n\
+if ! redis-cli -h redis -p 6379 ping | grep -q "PONG"; then\n\
+  echo "Redis connection failed"\n\
+  exit 1\n\
+fi\n\
+\n\
+echo "All health checks passed"\n\
+exit 0\n\
+' > /app/healthcheck.sh && chmod +x /app/healthcheck.sh
+
+# Create indexer development utilities
+RUN echo '#!/bin/bash\n\
+# Indexer development utilities\n\
+\n\
+case "$1" in\n\
+  "logs")\n\
+    if [ "$2" ]; then\n\
+      tail -f /app/logs/*$2*.log\n\
+    else\n\
+      tail -f /app/logs/*.log\n\
+    fi\n\
+    ;;\n\
+  "logs:indexer")\n\
+    tail -f /app/logs/indexer.log\n\
+    ;;\n\
+  "logs:processor")\n\
+    tail -f /app/logs/processor.log\n\
+    ;;\n\
+  "logs:errors")\n\
+    tail -f /app/logs/error.log\n\
+    ;;\n\
+  "stats")\n\
+    curl -s http://localhost:3001/stats | jq .\n\
+    ;;\n\
+  "metrics")\n\
+    curl -s http://localhost:3001/metrics\n\
+    ;;\n\
+  "db-status")\n\
+    tsx /app/scripts/db-status.ts\n\
+    ;;\n\
+  "reset-cursor")\n\
+    echo "Resetting indexer cursor..."\n\
+    tsx /app/scripts/reset-cursor.ts\n\
+    ;;\n\
+  "backfill")\n\
+    if [ "$2" ] && [ "$3" ]; then\n\
+      echo "Starting backfill from block $2 to $3"\n\
+      tsx /app/scripts/backfill.ts --from $2 --to $3\n\
+    else\n\
+      echo "Usage: indexer-utils.sh backfill <start_block> <end_block>"\n\
+    fi\n\
+    ;;\n\
+  "reindex")\n\
+    echo "Starting reindexing process..."\n\
+    tsx /app/scripts/reindex.ts\n\
+    ;;\n\
+  "inspect-block")\n\
+    if [ "$2" ]; then\n\
+      tsx /app/scripts/inspect-block.ts --block $2\n\
+    else\n\
+      echo "Usage: indexer-utils.sh inspect-block <block_number>"\n\
+    fi\n\
+    ;;\n\
+  "test:integration")\n\
+    pnpm run test:integration\n\
+    ;;\n\
+  "test:processors")\n\
+    pnpm run test:processors\n\
+    ;;\n\
+  "lint")\n\
+    pnpm run lint\n\
+    ;;\n\
+  "type-check")\n\
+    pnpm run type-check\n\
+    ;;\n\
+  *)\n\
+    echo "Usage: indexer-utils.sh {logs|logs:indexer|logs:processor|logs:errors|stats|metrics|db-status|reset-cursor|backfill|reindex|inspect-block|test:integration|test:processors|lint|type-check}"\n\
+    ;;\n\
+esac\n\
+' > /app/indexer-utils.sh && chmod +x /app/indexer-utils.sh
+
+# Install indexer-specific development tools
+RUN pnpm add -D \
+    @typescript-eslint/parser \
+    @typescript-eslint/eslint-plugin \
+    eslint-plugin-import \
+    eslint-plugin-node \
+    eslint-plugin-promise \
+    jest \
+    @types/jest \
+    supertest \
+    @types/supertest
+
+# Set up nodemon configuration for indexer
+RUN echo '{\n\
+  "watch": ["src"],\n\
+  "ext": "ts,js,json",\n\
+  "ignore": [\n\
+    "node_modules",\n\
+    "dist",\n\
+    "logs",\n\
+    "cache",\n\
+    "snapshots",\n\
+    "temp"\n\
+  ],\n\
+  "exec": "tsx src/index.ts",\n\
+  "env": {\n\
+    "NODE_ENV": "development",\n\
+    "LOG_LEVEL": "debug",\n\
+    "INDEXER_DEBUG": "true"\n\
+  },\n\
+  "delay": "2000",\n\
+  "verbose": true,\n\
+  "restartable": "rs",\n\
+  "colours": true,\n\
+  "legacyWatch": false,\n\
+  "signal": "SIGTERM",\n\
+  "ignore_watch": [\n\
+    "*.log",\n\
+    "*.cache"\n\
+  ]\n\
+}' > /app/nodemon.json
+
+# Create indexer-specific environment setup
+RUN echo '# Indexer Development Environment Variables\n\
+export INDEXER_BATCH_SIZE=${INDEXER_BATCH_SIZE:-10}\n\
+export INDEXER_INTERVAL_MS=${INDEXER_INTERVAL_MS:-1000}\n\
+export INDEXER_CONCURRENT_PROCESSORS=${INDEXER_CONCURRENT_PROCESSORS:-5}\n\
+export INDEXER_MAX_RETRIES=${INDEXER_MAX_RETRIES:-3}\n\
+export INDEXER_RETRY_DELAY_MS=${INDEXER_RETRY_DELAY_MS:-5000}\n\
+export INDEXER_ENABLE_COMPRESSION=${INDEXER_ENABLE_COMPRESSION:-true}\n\
+export INDEXER_LOG_LEVEL=${INDEXER_LOG_LEVEL:-debug}\n\
+export PROMETHEUS_METRICS_PORT=${PROMETHEUS_METRICS_PORT:-9090}\n\
+export CACHE_TTL_SECONDS=${CACHE_TTL_SECONDS:-300}\n\
+export MAX_BLOCK_HISTORY=${MAX_BLOCK_HISTORY:-1000}\n\
+' > /app/.indexer.env
+
+# Install additional monitoring tools
+RUN apk add --no-cache htop iotop
+
+# Expose ports for indexer service
+EXPOSE 3001 9230 9090
+
+# Set default command
+CMD ["./start-indexer-dev.sh"]
+
+# Add labels for container identification
+LABEL maintainer="Minos AI Team <dev@minos.ai>"
+LABEL version="1.0.0"
+LABEL description="Minos AI Indexer Service - Development Environment"
+LABEL environment="development"
+LABEL service="indexer"
+
+# Enhanced health check with indexer-specific checks
+HEALTHCHECK --interval=30s --timeout=15s --start-period=60s --retries=3 \
+  CMD ["./healthcheck.sh"]
+
+# =====================================
+# Production Build Stage
+# =====================================
+FROM dependencies AS builder
+
+# Build application for production
+ENV NODE_ENV=production
+ENV GENERATE_SOURCEMAP=false
+
+# Copy source code
+COPY --chown=nodejs:nodejs . .
+
+# Build application
+RUN pnpm run build && \
+    pnpm prune --prod && \
+    npm cache clean --force
+
+# =====================================
+# Production Runtime Stage
+# =====================================
+FROM base AS production
+
+# Switch to nodejs user
+USER nodejs
+
+# Copy built application
+COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
+COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=nodejs:nodejs /app/package.json ./package.json
+
+# Copy necessary configuration files
+COPY --chown=nodejs:nodejs docker-entrypoint.sh ./
+COPY --chown=nodejs:nodejs healthcheck.sh ./
+
+# Set production environment
+ENV NODE_ENV=production
+ENV NODE_OPTIONS="--max-old-space-size=8192 --optimize-for-size"
+
+# Create production directories
+RUN mkdir -p logs cache data snapshots metrics temp && \
+    chown -R nodejs:nodejs logs cache data snapshots metrics temp
+
+# Expose port
+EXPOSE 3001
+
+# Set default command
+CMD ["node", "dist/index.js"]
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=15s --start-period=30s --retries=3 \
+  CMD ["./healthcheck.sh"]
+
+# Add production labels
+LABEL environment="production"

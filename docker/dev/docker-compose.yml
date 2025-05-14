@@ -1,0 +1,527 @@
+version: '3.8'
+
+networks:
+  minos-dev:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  solana_logs:
+    driver: local
+  indexer_cache:
+    driver: local
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: minos-postgres-dev
+    hostname: postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: minos_dev
+      POSTGRES_USER: minos_dev
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dev_password_123}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+      - ../shared/postgres-config/postgresql.conf:/etc/postgresql/postgresql.conf
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
+    networks:
+      minos-dev:
+        ipv4_address: 172.20.0.2
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U minos_dev -d minos_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: minos-redis-dev
+    hostname: redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+      - ../shared/redis-config/redis.conf:/usr/local/etc/redis/redis.conf
+    command: redis-server /usr/local/etc/redis/redis.conf
+    networks:
+      minos-dev:
+        ipv4_address: 172.20.0.3
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Solana Test Validator
+  solana-validator:
+    image: solanalabs/solana:latest
+    container_name: minos-solana-dev
+    hostname: solana-validator
+    restart: unless-stopped
+    ports:
+      - "8899:8899"     # RPC
+      - "8900:8900"     # Faucet
+      - "9900:9900"     # WebSocket
+      - "26656:26656"   # Gossip
+    volumes:
+      - solana_logs:/opt/solana/logs
+      - ./solana-config:/opt/solana/config
+      - ../shared/keypairs:/opt/solana/keypairs
+    environment:
+      RUST_LOG: solana=debug
+      SOLANA_LOG_PATH: /opt/solana/logs
+    command: >
+      bash -c "
+        solana config set --url http://localhost:8899 &&
+        solana-keygen new --no-bip39-passphrase --force --outfile /opt/solana/keypairs/validator-keypair.json &&
+        solana-test-validator
+          --rpc-bind-address 0.0.0.0
+          --rpc-port 8899
+          --faucet-port 8900
+          --websocket-port 9900
+          --gossip-port 26656
+          --log /opt/solana/logs/validator.log
+          --mint 1000000000
+          --reset
+          --quiet
+      "
+    networks:
+      minos-dev:
+        ipv4_address: 172.20.0.4
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8899/health || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+  # IPFS Node
+  ipfs:
+    image: ipfs/kubo:latest
+    container_name: minos-ipfs-dev
+    hostname: ipfs
+    restart: unless-stopped
+    ports:
+      - "4001:4001"     # P2P
+      - "5001:5001"     # API
+      - "8080:8080"     # Gateway
+    volumes:
+      - ipfs_data:/data/ipfs
+      - ../shared/ipfs-config:/data/ipfs/config
+    environment:
+      IPFS_PROFILE: server
+      IPFS_PATH: /data/ipfs
+    networks:
+      minos-dev:
+        ipv4_address: 172.20.0.5
+    healthcheck:
+      test: ["CMD-SHELL", "ipfs id || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Backend Service
+  backend:
+    build:
+      context: ../../packages/backend
+      dockerfile: ../../docker/dev/Dockerfile.backend
+      target: development
+    container_name: minos-backend-dev
+    hostname: backend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+      - "9229:9229"     # Node.js debugger
+    volumes:
+      - ../../packages/backend:/app
+      - /app/node_modules
+      - ../../packages/contracts/target/idl:/app/idl
+      - ../shared/ssl:/app/ssl
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      DEBUG_PORT: 9229
+      DATABASE_URL: postgres://minos_dev:${POSTGRES_PASSWORD:-dev_password_123}@postgres:5432/minos_dev
+      REDIS_URL: redis://redis:6379
+      SOLANA_RPC_URL: http://solana-validator:8899
+      SOLANA_WS_URL: ws://solana-validator:9900
+      IPFS_GATEWAY_URL: http://ipfs:8080
+      IPFS_API_URL: http://ipfs:5001
+      JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_key_123456789}
+      LOG_LEVEL: debug
+      ENABLE_SWAGGER: true
+      RATE_LIMIT_WINDOW_MS: 60000
+      RATE_LIMIT_MAX_REQUESTS: 100
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      solana-validator:
+        condition: service_healthy
+    networks:
+      minos-dev:
+        ipv4_address: 172.20.0.10
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.backend-dev.rule=Host(`api.minos.local`)"
+      - "traefik.http.services.backend-dev.loadbalancer.server.port=3000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/health || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+  # Indexer Service
+  indexer:
+    build:
+      context: ../../packages/indexer
+      dockerfile: ../../docker/dev/Dockerfile.indexer
+      target: development
+    container_name: minos-indexer-dev
+    hostname: indexer
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+      - "9230:9230"     # Node.js debugger
+    volumes:
+      - ../../packages/indexer:/app
+      - /app/node_modules
+      - ../../packages/contracts/target/idl:/app/idl
+      - indexer_cache:/app/cache
+    environment:
+      NODE_ENV: development
+      PORT: 3001
+      DEBUG_PORT: 9230
+      DATABASE_URL: postgres://minos_dev:${POSTGRES_PASSWORD:-dev_password_123}@postgres:5432/minos_dev
+      REDIS_URL: redis://redis:6379
+      SOLANA_RPC_URL: http://solana-validator:8899
+      SOLANA_WS_URL: ws://solana-validator:9900
+      LOG_LEVEL: debug
+      INDEXER_BATCH_SIZE: 10
+      INDEXER_INTERVAL_MS: 1000
+      ENABLE_METRICS: true
+      PROMETHEUS_PORT: 9090
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      solana-validator:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    networks:
+      minos-dev:
+        ipv4_address: 172.20.0.11
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.indexer-dev.rule=Host(`indexer.minos.local`)"
+      - "traefik.http.services.indexer-dev.loadbalancer.server.port=3001"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3001/health || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+  # AI Models Service (Python)
+  ai-models:
+    build:
+      context: ../../packages/ai-models
+      dockerfile: ../../docker/dev/Dockerfile.ai-models
+      target: development
+    container_name: minos-ai-models-dev
+    hostname: ai-models
+    restart: unless-stopped
+    ports:
+      - "8000:8000"     # FastAPI
+      - "8001:8001"     # Jupyter notebook
+      - "5678:5678"     # Python debugger
+    volumes:
+      - ../../packages/ai-models:/app
+      - ai_models_cache:/app/.cache
+      - ../shared/ml-data:/app/data
+    environment:
+      PYTHONPATH: /app
+      ENVIRONMENT: development
+      LOG_LEVEL: debug
+      DATABASE_URL: postgres://minos_dev:${POSTGRES_PASSWORD:-dev_password_123}@postgres:5432/minos_dev
+      REDIS_URL: redis://redis:6379
+      MODEL_CACHE_DIR: /app/.cache
+      ENABLE_JUPYTER: true
+      JUPYTER_PORT: 8001
+      ENABLE_DEBUGGER: true
+      DEBUGGER_PORT: 5678
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      minos-dev:
+        ipv4_address: 172.20.0.12
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ai-models-dev.rule=Host(`ai.minos.local`)"
+      - "traefik.http.services.ai-models-dev.loadbalancer.server.port=8000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 90s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+  # Prometheus (Monitoring)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: minos-prometheus-dev
+    hostname: prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ../shared/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+    networks:
+      minos-dev:
+        ipv4_address: 172.20.0.20
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.prometheus-dev.rule=Host(`prometheus.minos.local`)"
+      - "traefik.http.services.prometheus-dev.loadbalancer.server.port=9090"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9090/-/ready || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Grafana (Visualization)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: minos-grafana-dev
+    hostname: grafana
+    restart: unless-stopped
+    ports:
+      - "3002:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ../shared/grafana/provisioning:/etc/grafana/provisioning
+      - ../shared/grafana/dashboards:/var/lib/grafana/dashboards
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin123}
+      GF_USERS_ALLOW_SIGN_UP: false
+      GF_INSTALL_PLUGINS: grafana-piechart-panel,grafana-worldmap-panel
+      GF_LOG_LEVEL: debug
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    networks:
+      minos-dev:
+        ipv4_address: 172.20.0.21
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.grafana-dev.rule=Host(`grafana.minos.local`)"
+      - "traefik.http.services.grafana-dev.loadbalancer.server.port=3000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Traefik (Reverse Proxy)
+  traefik:
+    image: traefik:v3.0
+    container_name: minos-traefik-dev
+    hostname: traefik
+    restart: unless-stopped
+    command:
+      - --log.level=DEBUG
+      - --api.insecure=true
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --providers.docker.network=minos-dev
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      - --certificatesresolvers.letsencrypt.acme.tlschallenge=true
+      - --certificatesresolvers.letsencrypt.acme.email=dev@minos.ai
+      - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
+      - --certificatesresolvers.letsencrypt.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8081:8080"     # Traefik dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ../shared/traefik/letsencrypt:/letsencrypt
+      - ../shared/traefik/dynamic:/etc/traefik/dynamic
+    networks:
+      minos-dev:
+        ipv4_address: 172.20.0.30
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik-dev.rule=Host(`traefik.minos.local`)"
+      - "traefik.http.services.traefik-dev.loadbalancer.server.port=8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/ping || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Mailhog (Email testing)
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: minos-mailhog-dev
+    hostname: mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025"     # SMTP
+      - "8025:8025"     # Web UI
+    networks:
+      minos-dev:
+        ipv4_address: 172.20.0.31
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.mailhog-dev.rule=Host(`mail.minos.local`)"
+      - "traefik.http.services.mailhog-dev.loadbalancer.server.port=8025"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+  # Development Tools Container
+  dev-tools:
+    build:
+      context: ../shared/dev-tools
+      dockerfile: Dockerfile
+    container_name: minos-dev-tools
+    hostname: dev-tools
+    restart: "no"
+    volumes:
+      - ../../:/workspace
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ~/.ssh:/root/.ssh:ro
+      - ~/.gitconfig:/root/.gitconfig:ro
+    environment:
+      WORKSPACE_DIR: /workspace
+      SOLANA_RPC_URL: http://solana-validator:8899
+      DATABASE_URL: postgres://minos_dev:${POSTGRES_PASSWORD:-dev_password_123}@postgres:5432/minos_dev
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      - postgres
+      - redis
+      - solana-validator
+    networks:
+      minos-dev:
+        ipv4_address: 172.20.0.40
+    tty: true
+    stdin_open: true
+    profiles:
+      - tools
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# Additional volumes
+volumes:
+  ipfs_data:
+    driver: local
+  ai_models_cache:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+# Custom profiles for optional services
+profiles:
+  monitoring:
+    - prometheus
+    - grafana
+  ai:
+    - ai-models
+  tools:
+    - dev-tools
