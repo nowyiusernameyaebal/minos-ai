@@ -1,0 +1,128 @@
+{
+  "model_version": "1.0.0",
+  "description": "Androgeus Technical Analysis AI Model for predicting market movements",
+  
+  "sequence_length": 50,
+  "price_features": 5,
+  "indicator_features": 20,
+  "use_metadata": false,
+  "metadata_features": 10,
+  
+  "model_architecture": {
+    "lstm_units": [128, 64],
+    "dense_units": [128, 64, 32],
+    "dropout_rate": 0.3,
+    "l1_reg": 0.0001,
+    "l2_reg": 0.0001,
+    "use_attention": true
+  },
+  
+  "training_parameters": {
+    "learning_rate": 0.001,
+    "batch_size": 64,
+    "epochs": 200,
+    "early_stopping_patience": 15,
+    "use_validation": true,
+    "validation_split": 0.2,
+    "use_lr_scheduler": true,
+    "shuffle": true
+  },
+  
+  "prediction_targets": {
+    "predict_direction": true,
+    "predict_magnitude": true,
+    "predict_price_targets": false,
+    "predict_volatility": true,
+    
+    "direction_weight": 1.0,
+    "magnitude_weight": 1.0,
+    "volatility_weight": 0.5
+  },
+  
+  "price_feature_names": [
+    "open",
+    "high",
+    "low",
+    "close",
+    "volume"
+  ],
+  
+  "indicator_feature_names": [
+    "sma_20",
+    "sma_50",
+    "sma_200",
+    "ema_20",
+    "rsi_14",
+    "macd",
+    "macd_signal",
+    "macd_histogram",
+    "bollinger_upper",
+    "bollinger_middle",
+    "bollinger_lower",
+    "atr_14",
+    "adx_14",
+    "obv",
+    "cmf_20",
+    "price_momentum_14",
+    "volatility_ratio_14",
+    "trend_strength_14",
+    "oscillator_divergence_14",
+    "volume_pressure_14"
+  ],
+  
+  "inference_parameters": {
+    "confidence_threshold": 0.6,
+    "min_volatility_threshold": 0.005,
+    "max_prediction_horizon": 5,
+    "ensemble_predictions": true,
+    "normalize_method": "z-score"
+  },
+  
+  "evaluation_metrics": {
+    "direction_accuracy": true,
+    "magnitude_mae": true,
+    "volatility_mae": true,
+    "profit_factor": true,
+    "sharpe_ratio": true,
+    "max_drawdown": true
+  },
+  
+  "data_sources": {
+    "cryptocurrencies": ["BTC/USD", "ETH/USD", "SOL/USD"],
+    "equities": ["SPY", "QQQ", "AAPL", "MSFT", "NVDA"],
+    "forex": ["EUR/USD", "GBP/USD", "USD/JPY"],
+    "commodities": ["XAUUSD", "XAGUSD", "WTICOUSD"]
+  },
+  
+  "timeframes": {
+    "intraday": ["1m", "5m", "15m", "1h", "4h"],
+    "daily": ["1d"],
+    "weekly": ["1w"],
+    "monthly": ["1M"]
+  },
+  
+  "risk_management": {
+    "stop_loss_methods": ["fixed", "atr_based", "volatility_based"],
+    "position_sizing_methods": ["fixed", "kelly_criterion", "volatility_adjusted"],
+    "max_risk_per_trade": 0.02,
+    "max_portfolio_risk": 0.05,
+    "correlation_threshold": 0.7
+  },
+  
+  "backtesting_settings": {
+    "include_transaction_costs": true,
+    "transaction_cost_model": "percentage",
+    "percentage_fee": 0.001,
+    "slippage_model": "fixed",
+    "fixed_slippage": 0.0005,
+    "capital": 100000,
+    "evaluate_drawdowns": true,
+    "monte_carlo_iterations": 1000
+  },
+  
+  "indicators_to_use": [
+    "sma", "ema", "rsi", "macd", "bollinger", "atr", 
+    "adx", "stoch", "obv", "cmf", "price_momentum", 
+    "trend_strength", "volatility_ratio", "supertrend"
+  ]
+}
