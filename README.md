@@ -1,13 +1,10 @@
 <div align="center">
-  <img src="docs/assets/minos-ai-logo.png" alt="Minos-AI Logo" width="400" />
+  <img src="https://i.imgur.com/2dDUICk.jpeg" alt="Minos-AI Logo" width="400" />
   <h1>Minos-AI: Advanced AI-Powered DeFi Strategy Platform</h1>
   
-  [![Build Status](https://github.com/minos-ai/minos-ai/workflows/CI/badge.svg)](https://github.com/minos-ai/minos-ai/actions)
   [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-  [![npm version](https://img.shields.io/npm/v/@minos-ai/sdk.svg?style=flat)](https://www.npmjs.com/package/@minos-ai/sdk)
   [![Solana](https://img.shields.io/badge/Solana-v1.16-blueviolet)](https://solana.com/)
-  [![Discord](https://img.shields.io/discord/956782867415343174?label=Discord&logo=discord&logoColor=white)](https://discord.gg/minos-ai)
-  [![Twitter Follow](https://img.shields.io/twitter/follow/MinosAI?style=social)](https://twitter.com/MinosAI)
+  [![Twitter Follow](https://img.shields.io/twitter/follow/MinosAI?style=social)](https://x.com/minosai_)
 </div>
 
 ## 🧠 Overview
@@ -163,8 +160,6 @@ Minos-AI is governed by the community through:
 - Regular community calls and development updates
 - Transparent roadmap and development process
 
-Join our [Discord](https://discord.gg/minos-ai) to participate in the community.
-
 ## 📝 License
 
 Minos-AI is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
@@ -175,11 +170,10 @@ We welcome contributions from the community! Please see [CONTRIBUTING.md](CONTRI
 
 ## 🔗 Links
 
-- [Website](https://minos-ai.org)
-- [Documentation](https://docs.minos-ai.org)
-- [GitHub](https://github.com/minos-ai)
-- [Discord](https://discord.gg/minos-ai)
-- [Twitter](https://twitter.com/MinosAI)
+- [Website](https://minosai.net/)
+- [Documentation](https://docs.minosai.net/)
+- [GitHub](https://github.com/leonardpersson/minos-ai)
+- [Twitter](https://x.com/minosai_)
 
 ---
 
