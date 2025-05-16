@@ -1,0 +1,384 @@
+{
+  "model_config": {
+    "model_type": "transformer_ensemble",
+    "architecture": {
+      "hidden_dim": 768,
+      "num_heads": 12,
+      "num_layers": 6,
+      "dropout": 0.1,
+      "feature_dim": 256,
+      "sequence_length": 144,
+      "prediction_horizon": 24
+    },
+    "training": {
+      "learning_rate": 2e-5,
+      "batch_size": 32,
+      "max_epochs": 100,
+      "early_stopping_patience": 10,
+      "weight_decay": 0.01,
+      "warmup_steps": 1000,
+      "gradient_clip_norm": 1.0,
+      "optimizer": "adamw",
+      "scheduler": "cosine_with_restarts"
+    },
+    "ensemble": {
+      "num_models": 5,
+      "voting_strategy": "weighted",
+      "diversity_weight": 0.1,
+      "confidence_threshold": 0.75
+    }
+  },
+  
+  "social_data_config": {
+    "collection": {
+      "enable_twitter": true,
+      "enable_reddit": true,
+      "enable_discord": false,
+      "enable_telegram": false,
+      "enable_news": true,
+      "collection_interval": 300,
+      "max_posts_per_batch": 1000,
+      "lookback_hours": 24
+    },
+    "sentiment_analysis": {
+      "sentiment_model": "cardiffnlp/twitter-roberta-base-sentiment-latest",
+      "use_ensemble_sentiment": true,
+      "sentiment_threshold": 0.1,
+      "enable_emotion_analysis": true,
+      "confidence_threshold": 0.6
+    },
+    "influencer_tracking": {
+      "enable_influencer_weighting": true,
+      "influencer_weight_multiplier": 5.0,
+      "min_follower_count": 1000,
+      "accuracy_tracking": true,
+      "decay_rate": 0.95
+    },
+    "processing": {
+      "min_text_length": 10,
+      "max_text_length": 500,
+      "filter_spam": true,
+      "filter_bots": true,
+      "language_filter": ["en"],
+      "remove_duplicates": true
+    },
+    "storage": {
+      "database_url": "sqlite:///data/social_data.db",
+      "cache_expiry_hours": 48,
+      "backup_interval": 86400,
+      "max_storage_days": 90
+    },
+    "api_credentials": {
+      "twitter": {
+        "api_key": "${TWITTER_API_KEY}",
+        "api_secret": "${TWITTER_API_SECRET}",
+        "bearer_token": "${TWITTER_BEARER_TOKEN}",
+        "access_token": "${TWITTER_ACCESS_TOKEN}",
+        "access_token_secret": "${TWITTER_ACCESS_TOKEN_SECRET}"
+      },
+      "reddit": {
+        "client_id": "${REDDIT_CLIENT_ID}",
+        "client_secret": "${REDDIT_CLIENT_SECRET}",
+        "user_agent": "MinosAI-SocialData/1.0"
+      }
+    },
+    "tracked_protocols": [
+      "ethereum",
+      "bitcoin",
+      "uniswap",
+      "aave",
+      "compound",
+      "maker",
+      "curve",
+      "sushiswap",
+      "chainlink",
+      "polygon"
+    ],
+    "custom_keywords": {
+      "ethereum": ["eth", "$eth", "ethereum", "ether"],
+      "bitcoin": ["btc", "$btc", "bitcoin"],
+      "uniswap": ["uni", "$uni", "uniswap"],
+      "aave": ["aave", "$aave"],
+      "compound": ["comp", "$comp", "compound"],
+      "maker": ["mkr", "$mkr", "maker", "dai"],
+      "curve": ["crv", "$crv", "curve"],
+      "sushiswap": ["sushi", "$sushi", "sushiswap"],
+      "chainlink": ["link", "$link", "chainlink"],
+      "polygon": ["matic", "$matic", "polygon"]
+    }
+  },
+  
+  "inference_config": {
+    "model": {
+      "model_path": "./models/deucalion_latest.pth",
+      "model_format": "pytorch",
+      "use_quantization": false,
+      "use_mixed_precision": true,
+      "enable_optimizations": true,
+      "jit_compile": true
+    },
+    "performance": {
+      "batch_size": 1,
+      "max_concurrent_inference": 4,
+      "inference_timeout": 5.0,
+      "enable_async_processing": true,
+      "thread_pool_size": 8
+    },
+    "caching": {
+      "redis_url": "redis://localhost:6379/0",
+      "feature_cache_size": 1000,
+      "feature_cache_ttl": 300,
+      "strategy_cache_ttl": 600,
+      "cache_strategies": true,
+      "normalize_features": true
+    },
+    "strategy": {
+      "risk_limit": 0.05,
+      "min_confidence": 0.6,
+      "rebalance_threshold": 0.02,
+      "max_leverage": 3.0,
+      "min_allocation": 0.01,
+      "max_allocation": 0.3
+    },
+    "optimization": {
+      "use_portfolio_optimization": true,
+      "optimization_method": "markowitz",
+      "transaction_cost": 0.001,
+      "rebalancing_frequency": 6,
+      "risk_tolerance": 0.02,
+      "target_return": 0.12
+    },
+    "social_integration": {
+      "social_data_weight": 0.15,
+      "social_update_interval": 300,
+      "sentiment_threshold": 0.1,
+      "enable_social_adjustment": true
+    },
+    "monitoring": {
+      "enable_metrics": true,
+      "metrics_port": 8090,
+      "log_predictions": true,
+      "enable_health_checks": true,
+      "alert_thresholds": {
+        "max_latency": 10.0,
+        "min_confidence": 0.3,
+        "max_error_rate": 0.1
+      }
+    },
+    "ab_testing": {
+      "enable_ab_testing": false,
+      "test_variants": ["control", "variant_a", "variant_b"],
+      "traffic_split": [0.34, 0.33, 0.33],
+      "min_sample_size": 1000
+    }
+  },
+  
+  "risk_management": {
+    "position_limits": {
+      "max_position_size": 0.2,
+      "max_sector_allocation": 0.4,
+      "max_protocol_allocation": 0.15,
+      "min_diversification": 5
+    },
+    "risk_metrics": {
+      "target_var": 0.02,
+      "max_drawdown": 0.15,
+      "sharpe_ratio_target": 1.5,
+      "correlation_threshold": 0.8
+    },
+    "dynamic_adjustments": {
+      "volatility_scaling": true,
+      "momentum_decay": 0.95,
+      "risk_on_off_threshold": 0.03,
+      "stress_test_frequency": "daily"
+    },
+    "stop_loss": {
+      "enable_stop_loss": true,
+      "stop_loss_threshold": 0.05,
+      "take_profit_threshold": 0.15,
+      "trailing_stop": true,
+      "trailing_stop_distance": 0.02
+    }
+  },
+  
+  "data_sources": {
+    "price_feeds": {
+      "primary": {
+        "provider": "chainlink",
+        "endpoints": [
+          "https://api.chain.link/v1/feeds",
+          "https://api.coingecko.com/api/v3/"
+        ],
+        "update_frequency": 60,
+        "timeout": 5
+      },
+      "fallback": {
+        "provider": "coingecko",
+        "endpoints": [
+          "https://api.coingecko.com/api/v3/",
+          "https://api.coinbase.com/v2/"
+        ],
+        "update_frequency": 120,
+        "timeout": 10
+      }
+    },
+    "defi_metrics": {
+      "tvl_data": {
+        "provider": "defillama",
+        "endpoint": "https://api.llama.fi/",
+        "update_frequency": 300,
+        "cache_duration": 600
+      },
+      "yield_data": {
+        "provider": "yield_protocol",
+        "endpoint": "https://api.yieldprotocol.com/",
+        "update_frequency": 600,
+        "cache_duration": 1200
+      }
+    },
+    "blockchain_data": {
+      "ethereum": {
+        "rpc_endpoints": [
+          "https://mainnet.infura.io/v3/${INFURA_API_KEY}",
+          "https://eth-mainnet.alchemyapi.io/v2/${ALCHEMY_API_KEY}"
+        ],
+        "backup_endpoints": [
+          "https://cloudflare-eth.com",
+          "https://ethereum.publicnode.com"
+        ]
+      },
+      "polygon": {
+        "rpc_endpoints": [
+          "https://polygon-mainnet.infura.io/v3/${INFURA_API_KEY}",
+          "https://polygon-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}"
+        ]
+      }
+    }
+  },
+  
+  "system_config": {
+    "logging": {
+      "level": "INFO",
+      "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+      "file_path": "./logs/deucalion.log",
+      "max_file_size": "100MB",
+      "backup_count": 5,
+      "enable_structured_logging": true
+    },
+    "database": {
+      "url": "postgresql://user:password@localhost:5432/deucalion",
+      "pool_size": 20,
+      "max_overflow": 30,
+      "pool_timeout": 30,
+      "pool_recycle": 3600,
+      "enable_migrations": true
+    },
+    "security": {
+      "encryption_key": "${ENCRYPTION_KEY}",
+      "jwt_secret": "${JWT_SECRET}",
+      "api_rate_limit": 1000,
+      "enable_cors": true,
+      "allowed_origins": ["*"],
+      "enable_https": true
+    },
+    "performance": {
+      "worker_processes": 4,
+      "max_connections": 1000,
+      "keepalive_timeout": 75,
+      "client_body_timeout": 60,
+      "client_header_timeout": 60
+    }
+  },
+  
+  "backtesting": {
+    "default_params": {
+      "initial_capital": 100000,
+      "start_date": "2023-01-01",
+      "end_date": "2024-01-01",
+      "trading_frequency": "hourly",
+      "slippage": 0.001,
+      "commission": 0.0025
+    },
+    "validation": {
+      "train_split": 0.7,
+      "validation_split": 0.15,
+      "test_split": 0.15,
+      "cross_validation_folds": 5,
+      "time_series_split": true
+    },
+    "metrics": {
+      "primary_metrics": [
+        "total_return",
+        "sharpe_ratio",
+        "max_drawdown",
+        "calmar_ratio"
+      ],
+      "secondary_metrics": [
+        "sortino_ratio",
+        "information_ratio",
+        "win_rate",
+        "profit_factor"
+      ]
+    }
+  },
+  
+  "alerts": {
+    "channels": {
+      "slack": {
+        "enabled": true,
+        "webhook_url": "${SLACK_WEBHOOK_URL}",
+        "channel": "#defi-alerts"
+      },
+      "email": {
+        "enabled": true,
+        "smtp_server": "smtp.gmail.com",
+        "smtp_port": 587,
+        "username": "${EMAIL_USERNAME}",
+        "password": "${EMAIL_PASSWORD}",
+        "recipients": ["alerts@minos-ai.com"]
+      },
+      "telegram": {
+        "enabled": false,
+        "bot_token": "${TELEGRAM_BOT_TOKEN}",
+        "chat_id": "${TELEGRAM_CHAT_ID}"
+      }
+    },
+    "alert_rules": {
+      "high_risk": {
+        "condition": "risk_score > 0.8",
+        "severity": "critical",
+        "cooldown": 300
+      },
+      "low_confidence": {
+        "condition": "confidence < 0.3",
+        "severity": "warning",
+        "cooldown": 600
+      },
+      "portfolio_loss": {
+        "condition": "drawdown > 0.1",
+        "severity": "critical",
+        "cooldown": 60
+      },
+      "system_error": {
+        "condition": "error_rate > 0.05",
+        "severity": "critical",
+        "cooldown": 60
+      }
+    }
+  },
+  
+  "feature_flags": {
+    "enable_experimental_features": false,
+    "enable_advanced_optimization": true,
+    "enable_cross_chain_analysis": false,
+    "enable_alternative_data": true,
+    "enable_ml_feature_selection": true,
+    "enable_dynamic_rebalancing": true,
+    "enable_social_sentiment": true,
+    "enable_news_analysis": false
+  },
+  
+  "version": "1.0.0",
+  "last_updated": "2024-01-15T00:00:00Z",
+  "schema_version": "1.0"
+}
