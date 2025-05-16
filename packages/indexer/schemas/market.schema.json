@@ -1,0 +1,840 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Market Data Schema",
+  "description": "JSON Schema for market data structures in Minos-AI DeFi Indexer",
+  "definitions": {
+    "MarketMetrics": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique identifier for the market metrics record"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when the metrics were recorded"
+        },
+        "blockNumber": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Block number when the metrics were calculated"
+        },
+        "totalMarketCap": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Total market capitalization in USD"
+        },
+        "totalVolume": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Total 24h trading volume in USD"
+        },
+        "totalTvl": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Total Value Locked across all DeFi protocols"
+        },
+        "dominanceIndex": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Market dominance index (percentage)"
+        },
+        "volatilityIndex": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Market volatility index"
+        },
+        "correlationIndex": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1,
+          "description": "Average correlation index between protocols"
+        },
+        "liquidityIndex": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Overall market liquidity index"
+        },
+        "sentimentScore": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1,
+          "description": "Market sentiment score from social data"
+        },
+        "fearGreedIndex": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Fear and Greed Index"
+        },
+        "activeUsers": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of active users in 24h"
+        },
+        "transactions24h": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total transactions in 24h"
+        }
+      },
+      "required": [
+        "id",
+        "timestamp",
+        "blockNumber",
+        "totalMarketCap",
+        "totalVolume",
+        "totalTvl"
+      ],
+      "additionalProperties": false
+    },
+    "ProtocolMetrics": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique identifier for the protocol metrics record"
+        },
+        "protocol": {
+          "type": "string",
+          "enum": [
+            "uniswap",
+            "sushiswap",
+            "aave",
+            "compound",
+            "curve",
+            "yearn",
+            "maker",
+            "pancakeswap",
+            "balancer",
+            "synthetix"
+          ],
+          "description": "DeFi protocol name"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when the metrics were recorded"
+        },
+        "blockNumber": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Block number when the metrics were calculated"
+        },
+        "tvl": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Total Value Locked in the protocol"
+        },
+        "volume24h": {
+          "type": "number",
+          "minimum": 0,
+          "description": "24-hour trading volume"
+        },
+        "fees24h": {
+          "type": "number",
+          "minimum": 0,
+          "description": "24-hour fees collected"
+        },
+        "transactions24h": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of transactions in 24h"
+        },
+        "users24h": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Unique users in 24h"
+        },
+        "apy": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000,
+          "description": "Annual Percentage Yield"
+        },
+        "marketCap": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Protocol token market cap"
+        },
+        "priceChange24h": {
+          "type": "number",
+          "description": "24h price change percentage"
+        },
+        "growthRate": {
+          "type": "number",
+          "description": "Growth rate percentage"
+        },
+        "riskScore": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Protocol risk score (0-100)"
+        },
+        "liquidityScore": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Protocol liquidity score"
+        },
+        "pools": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of active pools"
+        },
+        "governance": {
+          "$ref": "#/definitions/GovernanceMetrics"
+        },
+        "security": {
+          "$ref": "#/definitions/SecurityMetrics"
+        }
+      },
+      "required": [
+        "id",
+        "protocol",
+        "timestamp",
+        "blockNumber",
+        "tvl"
+      ],
+      "additionalProperties": false
+    },
+    "PriceData": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique identifier for the price data record"
+        },
+        "tokenAddress": {
+          "type": "string",
+          "pattern": "^0x[a-fA-F0-9]{40}$",
+          "description": "Ethereum address of the token"
+        },
+        "tokenSymbol": {
+          "type": "string",
+          "pattern": "^[A-Z]{1,10}$",
+          "description": "Token symbol"
+        },
+        "tokenName": {
+          "type": "string",
+          "description": "Token name"
+        },
+        "decimals": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 18,
+          "description": "Token decimals"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of the price data"
+        },
+        "blockNumber": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Block number when price was recorded"
+        },
+        "price": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Current price in USD"
+        },
+        "priceEth": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Price in ETH"
+        },
+        "change24h": {
+          "type": "number",
+          "description": "24-hour price change percentage"
+        },
+        "volume24h": {
+          "type": "number",
+          "minimum": 0,
+          "description": "24-hour trading volume"
+        },
+        "marketCap": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Market capitalization"
+        },
+        "circulatingSupply": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Circulating supply"
+        },
+        "totalSupply": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Total supply"
+        },
+        "volatility": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Price volatility measure"
+        },
+        "liquidityScore": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Liquidity score"
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PriceSource"
+          },
+          "description": "Price data sources"
+        }
+      },
+      "required": [
+        "id",
+        "tokenAddress",
+        "timestamp",
+        "blockNumber",
+        "price"
+      ],
+      "additionalProperties": false
+    },
+    "PriceSource": {
+      "type": "object",
+      "properties": {
+        "exchange": {
+          "type": "string",
+          "enum": [
+            "uniswap",
+            "sushiswap",
+            "curve",
+            "balancer",
+            "1inch",
+            "chainlink",
+            "coinbase",
+            "binance"
+          ],
+          "description": "Price source exchange"
+        },
+        "price": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Price from this source"
+        },
+        "volume": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Volume from this source"
+        },
+        "pair": {
+          "type": "string",
+          "description": "Trading pair"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When this price was recorded"
+        }
+      },
+      "required": [
+        "exchange",
+        "price",
+        "timestamp"
+      ],
+      "additionalProperties": false
+    },
+    "LiquidityMetrics": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique identifier for liquidity metrics"
+        },
+        "protocol": {
+          "type": "string",
+          "description": "Protocol name"
+        },
+        "poolAddress": {
+          "type": "string",
+          "pattern": "^0x[a-fA-F0-9]{40}$",
+          "description": "Pool contract address"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of the metrics"
+        },
+        "totalLiquidity": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Total liquidity in USD"
+        },
+        "token0": {
+          "$ref": "#/definitions/TokenInfo"
+        },
+        "token1": {
+          "$ref": "#/definitions/TokenInfo"
+        },
+        "feeRate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Fee rate as decimal"
+        },
+        "dailyVolume": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Daily trading volume"
+        },
+        "feeRevenue": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Fee revenue generated"
+        },
+        "impermanentLoss": {
+          "type": "number",
+          "description": "Current impermanent loss percentage"
+        },
+        "apy": {
+          "type": "number",
+          "minimum": 0,
+          "description": "APY for liquidity providers"
+        },
+        "utilizationRate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Liquidity utilization rate"
+        }
+      },
+      "required": [
+        "id",
+        "protocol",
+        "poolAddress",
+        "timestamp",
+        "totalLiquidity"
+      ],
+      "additionalProperties": false
+    },
+    "TokenInfo": {
+      "type": "object",
+      "properties": {
+        "address": {
+          "type": "string",
+          "pattern": "^0x[a-fA-F0-9]{40}$",
+          "description": "Token contract address"
+        },
+        "symbol": {
+          "type": "string",
+          "pattern": "^[A-Z]{1,10}$",
+          "description": "Token symbol"
+        },
+        "name": {
+          "type": "string",
+          "description": "Token name"
+        },
+        "decimals": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 18,
+          "description": "Token decimals"
+        },
+        "reserve": {
+          "type": "string",
+          "pattern": "^[0-9]+$",
+          "description": "Token reserve amount"
+        },
+        "weight": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Token weight in pool"
+        }
+      },
+      "required": [
+        "address",
+        "symbol",
+        "decimals",
+        "reserve"
+      ],
+      "additionalProperties": false
+    },
+    "YieldMetrics": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique identifier for yield metrics"
+        },
+        "protocol": {
+          "type": "string",
+          "description": "Protocol name"
+        },
+        "strategy": {
+          "type": "string",
+          "enum": [
+            "lending",
+            "yield_farming",
+            "liquidity_mining",
+            "staking",
+            "leveraged_farming"
+          ],
+          "description": "Yield strategy type"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of the metrics"
+        },
+        "apy": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Annual Percentage Yield"
+        },
+        "baseApy": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Base APY without rewards"
+        },
+        "rewardApy": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Additional APY from rewards"
+        },
+        "totalValueLocked": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Total Value Locked in this strategy"
+        },
+        "participants": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of participants"
+        },
+        "rewardTokens": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/RewardToken"
+          },
+          "description": "Reward tokens and rates"
+        },
+        "riskLevel": {
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "extreme"
+          ],
+          "description": "Risk level assessment"
+        },
+        "lockPeriod": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Lock period in seconds (0 if no lock)"
+        }
+      },
+      "required": [
+        "id",
+        "protocol",
+        "strategy",
+        "timestamp",
+        "apy"
+      ],
+      "additionalProperties": false
+    },
+    "RewardToken": {
+      "type": "object",
+      "properties": {
+        "address": {
+          "type": "string",
+          "pattern": "^0x[a-fA-F0-9]{40}$",
+          "description": "Reward token address"
+        },
+        "symbol": {
+          "type": "string",
+          "pattern": "^[A-Z]{1,10}$",
+          "description": "Reward token symbol"
+        },
+        "rate": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Reward rate (tokens per block/second)"
+        },
+        "apy": {
+          "type": "number",
+          "minimum": 0,
+          "description": "APY contribution from this token"
+        },
+        "emissionEnd": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When reward emissions end"
+        }
+      },
+      "required": [
+        "address",
+        "symbol",
+        "rate",
+        "apy"
+      ],
+      "additionalProperties": false
+    },
+    "GovernanceMetrics": {
+      "type": "object",
+      "properties": {
+        "totalVotingPower": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Total voting power in circulation"
+        },
+        "activeProposals": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of active proposals"
+        },
+        "participationRate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Governance participation rate"
+        },
+        "delegationRate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Token delegation rate"
+        },
+        "treasuryValue": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Treasury value in USD"
+        },
+        "lastUpdate": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last governance update"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SecurityMetrics": {
+      "type": "object",
+      "properties": {
+        "auditScore": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Security audit score"
+        },
+        "auditors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Security audit firms"
+        },
+        "bugBountyProgram": {
+          "type": "boolean",
+          "description": "Has active bug bounty program"
+        },
+        "timelockedUpgrades": {
+          "type": "boolean",
+          "description": "Uses timelocked upgrades"
+        },
+        "multisigThreshold": {
+          "type": "string",
+          "pattern": "^[0-9]+/[0-9]+$",
+          "description": "Multisig threshold (e.g., 3/5)"
+        },
+        "insuranceCoverage": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Insurance coverage amount"
+        },
+        "lastAudit": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Date of last security audit"
+        }
+      },
+      "additionalProperties": false
+    },
+    "MarketEvent": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique event identifier"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "large_trade",
+            "arbitrage",
+            "liquidation",
+            "governance_event",
+            "security_event",
+            "migration",
+            "upgrade"
+          ],
+          "description": "Type of market event"
+        },
+        "protocol": {
+          "type": "string",
+          "description": "Protocol where event occurred"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the event occurred"
+        },
+        "blockNumber": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Block number of the event"
+        },
+        "transactionHash": {
+          "type": "string",
+          "pattern": "^0x[a-fA-F0-9]{64}$",
+          "description": "Transaction hash"
+        },
+        "impact": {
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ],
+          "description": "Event impact level"
+        },
+        "value": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Value involved in USD"
+        },
+        "description": {
+          "type": "string",
+          "description": "Event description"
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Additional event metadata"
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "timestamp",
+        "blockNumber",
+        "impact"
+      ],
+      "additionalProperties": false
+    },
+    "CorrelationData": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "protocol1": {
+          "type": "string",
+          "description": "First protocol in correlation pair"
+        },
+        "protocol2": {
+          "type": "string",
+          "description": "Second protocol in correlation pair"
+        },
+        "correlationCoefficient": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1,
+          "description": "Pearson correlation coefficient"
+        },
+        "timeframe": {
+          "type": "string",
+          "enum": [
+            "1h",
+            "1d",
+            "7d",
+            "30d",
+            "90d"
+          ],
+          "description": "Timeframe for correlation calculation"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When correlation was calculated"
+        },
+        "significance": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Statistical significance level"
+        }
+      },
+      "required": [
+        "id",
+        "protocol1",
+        "protocol2",
+        "correlationCoefficient",
+        "timeframe",
+        "timestamp"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "type": "object",
+  "properties": {
+    "marketData": {
+      "$ref": "#/definitions/MarketMetrics"
+    },
+    "protocolMetrics": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/ProtocolMetrics"
+      }
+    },
+    "priceData": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/PriceData"
+      }
+    },
+    "liquidityMetrics": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/LiquidityMetrics"
+      }
+    },
+    "yieldMetrics": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/YieldMetrics"
+      }
+    },
+    "marketEvents": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/MarketEvent"
+      }
+    },
+    "correlationData": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/CorrelationData"
+      }
+    }
+  },
+  "additionalProperties": false
+}
